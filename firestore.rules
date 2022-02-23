@@ -1,0 +1,172 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+     match /IbQuestions/{doc} {
+        allow create: if (isSignedIn(request) && isIbQuestionValid(request));
+        allow read,delete,update: if isSignedIn(request);
+         
+     // Allow Distrubuted Counter to do its work.
+      match /_counter_shards_/{shardId} {
+         allow get;
+         allow write;
+      }
+        
+           
+      match/Answers/{document=**}{
+        allow read,write : if isSignedIn(request);
+      }
+      
+       match/Likes/{document=**}{
+        allow read,write : if isSignedIn(request);
+      }
+      
+       match /Comments/{doc}{
+        allow read,write : if isSignedIn(request);
+        
+        match /Comments-Likes/{document=**}{
+        allow read,write : if isSignedIn(request);
+       }
+      }
+   }
+  
+    match /IbQuestions-dev/{doc} {
+        allow create: if (isSignedIn(request));
+        allow read,delete,update: if isSignedIn(request);
+        
+        // Allow Distrubuted Counter to do its work.
+        match /_counter_shards_/{shardId} {
+          allow get;
+          allow write;
+      }
+              
+        match/Answers-dev/{document=**}{
+        allow read,write : if isSignedIn(request);
+      }
+      
+       match/Likes-dev/{document=**}{
+        allow read,write : if isSignedIn(request);
+      }
+      
+       match /Comments-dev/{document=**}{
+        allow read,write : if isSignedIn(request);
+      }
+   }
+   
+     match /First8-dev/{doc} {
+        allow create: if (isSignedIn(request) && isIbQuestionValid(request));
+        allow read,delete,update: if isSignedIn(request);
+        
+        match/Answers-dev/{document=**}{
+        allow read,write : if isSignedIn(request);
+      }
+      
+       match/Likes-dev/{document=**}{
+        allow read,write : if isSignedIn(request);
+      }
+      
+       match /Comments-dev/{document=**}{
+        allow read,write : if isSignedIn(request);
+      }
+   }
+   
+    match /First8/{doc} {
+        allow create: if (isSignedIn(request) && isIbQuestionValid(request));
+        allow read,delete,update: if isSignedIn(request);
+        
+        match/Answers-dev/{document=**}{
+        allow read,write : if isSignedIn(request);
+      }
+      
+       match/Likes-dev/{document=**}{
+        allow read,write : if isSignedIn(request);
+      }
+      
+       match /Comments-dev/{document=**}{
+        allow read,write : if isSignedIn(request);
+      }
+   }
+   
+   match /IbTags-dev/{document=**} {
+        allow write: if isSignedIn(request);
+        allow read: if isSignedIn(request);
+        // Allow Distrubuted Counter to do its work.
+      match /_counter_shards_/{shardId} {
+         allow get;
+         allow write;
+      }
+   }
+   
+   match /IbTags/{document=**} {
+        allow write: if isSignedIn(request);
+        allow read: if isSignedIn(request);
+        
+        // Allow Distrubuted Counter to do its work.
+      match /_counter_shards_/{shardId} {
+         allow get;
+         allow write;
+      }
+   }
+   
+   match /IbUsers/{document=**} {
+        allow write: if isSignedIn(request);
+        allow read: if isSignedIn(request);
+        // Allow Distrubuted Counter to do its work.
+      match /_counter_shards_/{shardId} {
+         allow get;
+         allow write;
+      }
+   }
+   
+   match /IbUsers-dev/{document=**} {
+        allow write: if isSignedIn(request);
+        allow read: if isSignedIn(request);
+   }
+   
+   match /IbChatRooms/{document=**} {
+        allow write: if isSignedIn(request);
+        allow read: if isSignedIn(request);
+   }
+   
+   match /IbChatRooms-dev/{document=**}{
+        allow write: if isSignedIn(request);
+        allow read: if isSignedIn(request);
+   }
+   
+    match /ApiKeys/{document=**}{
+        allow write: if isSignedIn(request);
+        allow read: if isSignedIn(request);
+   }
+   
+   
+   // Collection Groups Rules
+   match /{path=**}/Answers/{answer} {
+      allow read, write: if isSignedIn(request);
+    }
+    
+   match /{path=**}/Answers-dev/{answer} {
+      allow read, write: if isSignedIn(request);
+    }
+   
+  }  
+
+   
+   
+ 
+ 
+  
+  function isSignedIn(request) {
+    return request.auth != null;
+  }
+  
+  function isIbQuestionValid(request){
+   return ("privacyBounds" in request.resource.data) && ("question" in request.resource.data)
+   && ("creatorId" in request.resource.data) && ("askedTimeInMs" in request.resource.data)
+   &&("choices" in request.resource.data) &&("id" in request.resource.data)
+   &&("tagIds" in request.resource.data);
+  }
+  
+  function isIbAnswerValid(request){
+   return ("choiceId" in request.resource.data);
+  }
+}
