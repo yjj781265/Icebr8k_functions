@@ -1,22 +1,20 @@
 /* eslint-disable max-len */
-import * as functions from "firebase-functions";
-import * as admin from "firebase-admin";
-const userStatusPending = "pending";
-const userStatusApproved = "approved";
-const userStatusRejected = "rejected";
-
-admin.initializeApp();
+import * as functions from 'firebase-functions';
+import * as admin from 'firebase-admin';
+const userStatusPending = 'pending';
+const userStatusApproved = 'approved';
+const userStatusRejected = 'rejected';
 
 export const sendStatusEmail = functions.https.onCall((data) => {
   const fName: string = data.fName;
   const status: string = data.status;
   const email: string = data.email;
   const note: string = data.note;
-  let html = "";
-  let subject = "";
+  let html = '';
+  let subject = '';
 
   if (status === userStatusApproved) {
-    subject = "Your Icebr8k profile is approved";
+    subject = 'Your Icebr8k profile is approved';
     html = `<p>Hello ${fName},</p>
       <div>
       <p>Congratulations, your Icebr8k profile is approved! Now you can login to your Icebr8k app to find people with common interests aroud, have fun and enjoy the journey!</p>
@@ -26,7 +24,7 @@ export const sendStatusEmail = functions.https.onCall((data) => {
       </div>`;
     sendEmail(email, subject, html);
   } else if (status === userStatusRejected) {
-    subject = "Your Icebr8k profile is rejected";
+    subject = 'Your Icebr8k profile is rejected';
     html = `<p>Your Icebr8k profile is rejected due to the following reason(s):</p>
       <p>${note}</p>
       <p>&nbsp;</p>
@@ -38,7 +36,7 @@ export const sendStatusEmail = functions.https.onCall((data) => {
   } else if (status === userStatusPending) {
     sendEmail(
         email,
-        "Your Icebr8k profile is under review",
+        'Your Icebr8k profile is under review',
         `<p>Hello ${fName},</p>
           <div>
           <p>Thank you for signing up Icebr8k, we will review your profile and notify you the status as soon as possible. Thank you for your patient.</p>
@@ -59,6 +57,6 @@ export const sendStatusEmail = functions.https.onCall((data) => {
 function sendEmail(email: string, subject: string, html: string) {
   admin
       .firestore()
-      .collection("Mails")
+      .collection('Mails')
       .add({to: email, message: {subject: subject, html: html}});
 }
