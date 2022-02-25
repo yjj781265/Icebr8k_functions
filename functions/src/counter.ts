@@ -5,10 +5,6 @@ import {firestore} from 'firebase-admin/lib/firestore';
 
 export class Counter {
   static async incrementBy(doc: firestore.DocumentReference, field: string, val: number): Promise<void> {
-    if (!(await doc.get()).exists) {
-      return;
-    }
-
     const shardId = uuid.v4();
     const increment: any = firestore.FieldValue.increment(val);
     const update: { [key: string]: any } = field

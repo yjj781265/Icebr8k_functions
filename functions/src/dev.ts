@@ -27,6 +27,13 @@ export const answerAddTriggerDev = functions.firestore
           .collection(`IbQuestions${dbSuffix}`)
           .doc(`${questionId}`);
 
+      if (!(await questionRef.get()).exists) {
+        console.warn('document does not exist, failed to increment');
+        return;
+      } else {
+        console.info('document does exist, increment -1');
+      }
+
       // + poll and choice count
       try {
         Counter.incrementBy(questionRef, 'pollSize', 1);
@@ -44,6 +51,13 @@ export const answerAddTriggerDev = functions.firestore
           .firestore()
           .collection(`IbUsers${dbSuffix}`)
           .doc(`${uid}`);
+
+      if (!(await userRef.get()).exists) {
+        console.warn('document does not exist, failed to increment');
+        return;
+      } else {
+        console.info('document does exist, increment -1');
+      }
 
       // update user answered size
       try {
@@ -69,6 +83,13 @@ export const answerUpdateTriggerDev = functions.firestore
           .collection(`IbQuestions${dbSuffix}`)
           .doc(`${questionId}`);
 
+      if (!(await questionRef.get()).exists) {
+        console.warn('document does not exist, failed to increment');
+        return;
+      } else {
+        console.info('document does exist, increment -1');
+      }
+
       // update choice count
       try {
         Counter.incrementBy(questionRef, beforeChoiceId, -1);
@@ -93,6 +114,12 @@ export const answerDeleteTriggerDev = functions.firestore
           .collection(`IbQuestions${dbSuffix}`)
           .doc(`${questionId}`);
 
+      if (!(await questionRef.get()).exists) {
+        console.warn('document does not exist, failed to increment');
+        return;
+      } else {
+        console.info('document does exist, increment -1');
+      }
 
       // - poll size
       try {
@@ -113,6 +140,13 @@ export const answerDeleteTriggerDev = functions.firestore
           .collection(`IbUsers${dbSuffix}`)
           .doc(`${uid}`);
 
+      if (!(await userRef.get()).exists) {
+        console.warn('document does not exist, failed to increment');
+        return;
+      } else {
+        console.info('document does exist, increment -1');
+      }
+
       // - user answered size
       try {
         Counter.incrementBy(userRef, 'answeredCount', -1);
@@ -130,14 +164,23 @@ export const questionAddTriggerDev = functions.firestore
       if (creatorId == null || creatorId == undefined) {
         return;
       }
+
+
       const userRef = admin
           .firestore()
           .collection(`IbUsers${dbSuffix}`)
           .doc(`${creatorId}`);
 
+      if (!(await userRef.get()).exists) {
+        console.warn('document does not exist, failed to increment');
+        return;
+      } else {
+        console.info('document does exist, increment -1');
+      }
+
       // + user asked size
       try {
-        handleTagQuestionCount(true, tagIds);
+        await handleTagQuestionCount(true, tagIds);
         Counter.incrementBy(userRef, 'askedCount', 1);
       } catch (e) {
         console.log('Transaction failure:', e);
@@ -158,9 +201,16 @@ export const questionDeleteTriggerDev = functions.firestore
           .collection(`IbUsers${dbSuffix}`)
           .doc(`${creatorId}`);
 
+      if (!(await userRef.get()).exists) {
+        console.warn('document does not exist, failed to increment');
+        return;
+      } else {
+        console.info('document does exist, increment -1');
+      }
+
       // - user asked size
       try {
-        handleTagQuestionCount(false, tagIds);
+        await handleTagQuestionCount(false, tagIds);
         Counter.incrementBy(userRef, 'askedCount', -1);
       } catch (e) {
         console.log('Transaction failure:', e);
@@ -180,6 +230,13 @@ export const commentAddTriggerDev = functions.firestore
           .firestore()
           .collection(`IbQuestions${dbSuffix}`)
           .doc(`${questionId}`);
+
+      if (!(await questionRef.get()).exists) {
+        console.warn('document does not exist, failed to increment');
+        return;
+      } else {
+        console.info('document does exist, increment -1');
+      }
       // + comment size
       try {
         Counter.incrementBy(questionRef, 'comments', 1);
@@ -189,7 +246,7 @@ export const commentAddTriggerDev = functions.firestore
     });
 
 export const commentDeleteTriggerDev = functions.firestore
-    .document(`IbQuestions${dbSuffix}/{docId}/Comments${dbSuffix}/{uid}`)
+    .document(`IbQuestions${dbSuffix}/{docId}/Comments${dbSuffix}/{commentId}`)
     .onDelete(async (snapshot) => {
       console.log('commentDeleteTriggerDev');
       const questionId: string | undefined | null = snapshot.data().questionId;
@@ -202,7 +259,14 @@ export const commentDeleteTriggerDev = functions.firestore
           .collection(`IbQuestions${dbSuffix}`)
           .doc(`${questionId}`);
 
-      // - poll size
+      if (!(await questionRef.get()).exists) {
+        console.warn('document does not exist, failed to increment');
+        return;
+      } else {
+        console.info('document does exist, increment -1');
+      }
+
+      // - comment size
       try {
         Counter.incrementBy(questionRef, 'comments', -1);
       } catch (e) {
@@ -223,6 +287,13 @@ export const likeAddTriggerDev = functions.firestore
           .firestore()
           .collection(`IbQuestions${dbSuffix}`)
           .doc(`${questionId}`);
+
+      if (!(await questionRef.get()).exists) {
+        console.warn('document does not exist, failed to increment');
+        return;
+      } else {
+        console.info('document does exist, increment -1');
+      }
 
       // + like count
       try {
@@ -246,6 +317,13 @@ export const likeDeleteTriggerDev = functions.firestore
           .collection(`IbQuestions${dbSuffix}`)
           .doc(`${questionId}`);
 
+      if (!(await questionRef.get()).exists) {
+        console.warn('document does not exist, failed to increment');
+        return;
+      } else {
+        console.info('document does exist, increment -1');
+      }
+
       // - like count
       try {
         Counter.incrementBy(questionRef, 'likes', -1);
@@ -268,8 +346,14 @@ export const commentLikeAddTriggerDev = functions.firestore
           .firestore()
           .collection(`IbQuestions${dbSuffix}`)
           .doc(`${questionId}`).collection(`Comments${dbSuffix}`).doc(`${commentId}`);
+      if (!(await commentRef.get()).exists) {
+        console.warn('document does not exist, failed to increment');
+        return;
+      } else {
+        console.info('document does exist, increment -1');
+      }
 
-      // + like count
+      // + comment like count
       try {
         Counter.incrementBy(commentRef, 'likes', 1);
       } catch (e) {
@@ -292,7 +376,14 @@ export const commentLikeDeleteTriggerDev = functions.firestore
           .collection(`IbQuestions${dbSuffix}`)
           .doc(`${questionId}`).collection(`Comments${dbSuffix}`).doc(`${commentId}`);
 
-      // - like count
+      if (!(await commentRef.get()).exists) {
+        console.warn('document does not exist, failed to increment');
+        return;
+      } else {
+        console.info('document does exist, increment -1');
+      }
+
+      // - comment like count
       try {
         Counter.incrementBy(commentRef, 'likes', -1);
       } catch (e) {
@@ -315,7 +406,14 @@ export const commentReplyAddTriggerDev = functions.firestore
           .collection(`IbQuestions${dbSuffix}`)
           .doc(questionId).collection(`Comments${dbSuffix}`).doc(commentId);
 
-      // + reply count
+      if (!(await commentRef.get()).exists) {
+        console.warn('document does not exist, failed to increment');
+        return;
+      } else {
+        console.info('document does exist, increment -1');
+      }
+
+      // + comment reply count
       try {
         Counter.incrementBy(commentRef, 'replies', 1);
       } catch (e) {
@@ -338,7 +436,14 @@ export const commentReplyDeleteTriggerDev = functions.firestore
           .collection(`IbQuestions${dbSuffix}`)
           .doc(questionId).collection(`Comments${dbSuffix}`).doc(commentId);
 
-      // - reply count
+      if (!(await commentRef.get()).exists) {
+        console.warn('document does not exist, failed to increment');
+        return;
+      } else {
+        console.info('document does exist, increment -1');
+      }
+
+      // - comment reply count
       try {
         Counter.incrementBy(commentRef, 'replies', -1);
       } catch (e) {
@@ -352,14 +457,19 @@ export const commentReplyDeleteTriggerDev = functions.firestore
  * @param {boolean} isIncrement add or decrease count by 1.
  * @param {string[]} tagIds array of tagIds.
  */
-function handleTagQuestionCount(isIncrement: boolean, tagIds: string[] ) {
+async function handleTagQuestionCount(isIncrement: boolean, tagIds: string[] ) {
   for (let i=0; i<tagIds.length; i++) {
     const id = tagIds[i];
-    console.log(id.toString());
+    console.log('handleTagQuestionCount');
     const tagRef = admin
         .firestore()
         .collection(`IbTags${dbSuffix}`)
         .doc(id.toString());
+
+    if (!(await tagRef.get()).exists) {
+      console.warn('doc does not exist');
+      return;
+    }
 
     if (isIncrement) {
       Counter.incrementBy(tagRef, 'questionCount', 1 );
