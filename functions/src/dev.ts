@@ -451,6 +451,157 @@ export const commentReplyDeleteTriggerDev = functions.firestore
       }
     });
 
+export const notificationAddDev = functions.firestore
+    .document(`IbUsers${dbSuffix}/{docId}/IbNotifications${dbSuffix}/{notificationId}`)
+    .onCreate(async (snapshot) => {
+      console.log('notificationAddDev');
+      const isRead : boolean = snapshot.data().isRead;
+      const recipientId: string = snapshot.data().recipientId;
+
+      if (isRead) {
+        return;
+      }
+
+      const userRef = admin
+          .firestore()
+          .collection(`IbUsers${dbSuffix}`)
+          .doc(recipientId);
+
+      if (!(await userRef.get()).exists) {
+        console.warn('document does not exist, failed to increment');
+        return;
+      } else {
+        console.info('document does exist, increment +1');
+      }
+
+      // + notificationCount
+      try {
+        Counter.incrementBy(userRef, 'notificationCount', 1);
+      } catch (e) {
+        console.log('Transaction failure:', e);
+      }
+    });
+
+export const friendsAddDev = functions.firestore
+    .document(`IbUsers${dbSuffix}/{docId}/IbFriends${dbSuffix}/{friendId}`)
+    .onCreate(async (snapshot, context) => {
+      const status : string = snapshot.data().status;
+      const docId: string = context.params.docId;
+
+      if (status != 'accepted') {
+        return;
+      }
+
+      console.log(`friendsAddDev ${docId} friendId: ${context.params.friendId}`);
+
+      const userRef = admin
+          .firestore()
+          .collection(`IbUsers${dbSuffix}`)
+          .doc(docId);
+
+      if (!(await userRef.get()).exists) {
+        console.warn('document does not exist, failed to increment');
+        return;
+      } else {
+        console.info('document does exist, increment +1');
+      }
+
+      // + friendCount
+      try {
+        Counter.incrementBy(userRef, 'friendCount', 1);
+      } catch (e) {
+        console.log('Transaction failure:', e);
+      }
+    });
+
+export const friendsDeleteDev = functions.firestore
+    .document(`IbUsers${dbSuffix}/{docId}/IbFriends${dbSuffix}/{friendId}`)
+    .onDelete(async (snapshot, context) => {
+      const docId: string = context.params.docId;
+      console.log(`friendsDeleteDev ${docId} friendId: ${context.params.friendId}`);
+
+      const userRef = admin
+          .firestore()
+          .collection(`IbUsers${dbSuffix}`)
+          .doc(docId);
+
+      if (!(await userRef.get()).exists) {
+        console.warn('document does not exist, failed to increment');
+        return;
+      } else {
+        console.info('document does exist, increment -1');
+      }
+
+      // - friendCount
+      try {
+        Counter.incrementBy(userRef, 'friendCount', -1);
+      } catch (e) {
+        console.log('Transaction failure:', e);
+      }
+    });
+
+export const notificationDeleteDev = functions.firestore
+    .document(`IbUsers${dbSuffix}/{docId}/IbNotifications${dbSuffix}/{notificationId}`)
+    .onDelete(async (snapshot) => {
+      console.log('notificationDeleteDev');
+      const recipientId: string = snapshot.data().recipientId;
+
+      const userRef = admin
+          .firestore()
+          .collection(`IbUsers${dbSuffix}`)
+          .doc(recipientId);
+
+      if (!(await userRef.get()).exists) {
+        console.warn('document does not exist, failed to increment');
+        return;
+      } else {
+        console.info('document does exist, decrement counter');
+      }
+
+      // - notificationCount
+      try {
+        Counter.incrementBy(userRef, 'notificationCount', -1);
+      } catch (e) {
+        console.log('Transaction failure:', e);
+      }
+    });
+
+export const notificationUpdateDev = functions.firestore
+    .document(`IbUsers${dbSuffix}/{docId}/IbNotifications${dbSuffix}/{notificationId}`)
+    .onUpdate(async (snapshot) => {
+      console.log('notificationUpdateDev');
+      const isReadBefore : boolean = snapshot.before.data().isRead;
+      const isReadAfter : boolean = snapshot.after.data().isRead;
+      const recipientId: string = snapshot.after.data().recipientId;
+
+      if ((isReadBefore && isReadAfter)||(!isReadAfter && !isReadBefore)) {
+        return;
+      }
+
+      const userRef = admin
+          .firestore()
+          .collection(`IbUsers${dbSuffix}`)
+          .doc(recipientId);
+
+      if (!(await userRef.get()).exists) {
+        console.warn('document does not exist, failed to increment');
+        return;
+      } else {
+        console.info('document does exist, update counter');
+      }
+
+      // +- notificationCount
+      try {
+        if (isReadBefore && !isReadAfter) {
+          Counter.incrementBy(userRef, 'notificationCount', 1);
+        } else {
+          Counter.incrementBy(userRef, 'notificationCount', -1);
+        }
+      } catch (e) {
+        console.log('Transaction failure:', e);
+      }
+    });
+
 
 /**
  * Adds two numbers together.
