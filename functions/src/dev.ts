@@ -482,64 +482,6 @@ export const notificationAddDev = functions.firestore
       }
     });
 
-export const friendsAddDev = functions.firestore
-    .document(`IbUsers${dbSuffix}/{docId}/IbFriends${dbSuffix}/{friendId}`)
-    .onCreate(async (snapshot, context) => {
-      const status : string = snapshot.data().status;
-      const docId: string = context.params.docId;
-
-      if (status != 'accepted') {
-        return;
-      }
-
-      console.log(`friendsAddDev ${docId} friendId: ${context.params.friendId}`);
-
-      const userRef = admin
-          .firestore()
-          .collection(`IbUsers${dbSuffix}`)
-          .doc(docId);
-
-      if (!(await userRef.get()).exists) {
-        console.warn('document does not exist, failed to increment');
-        return;
-      } else {
-        console.info('document does exist, increment +1');
-      }
-
-      // + friendCount
-      try {
-        Counter.incrementBy(userRef, 'friendCount', 1);
-      } catch (e) {
-        console.log('Transaction failure:', e);
-      }
-    });
-
-export const friendsDeleteDev = functions.firestore
-    .document(`IbUsers${dbSuffix}/{docId}/IbFriends${dbSuffix}/{friendId}`)
-    .onDelete(async (snapshot, context) => {
-      const docId: string = context.params.docId;
-      console.log(`friendsDeleteDev ${docId} friendId: ${context.params.friendId}`);
-
-      const userRef = admin
-          .firestore()
-          .collection(`IbUsers${dbSuffix}`)
-          .doc(docId);
-
-      if (!(await userRef.get()).exists) {
-        console.warn('document does not exist, failed to increment');
-        return;
-      } else {
-        console.info('document does exist, increment -1');
-      }
-
-      // - friendCount
-      try {
-        Counter.incrementBy(userRef, 'friendCount', -1);
-      } catch (e) {
-        console.log('Transaction failure:', e);
-      }
-    });
-
 export const notificationDeleteDev = functions.firestore
     .document(`IbUsers${dbSuffix}/{docId}/IbNotifications${dbSuffix}/{notificationId}`)
     .onDelete(async (snapshot) => {
