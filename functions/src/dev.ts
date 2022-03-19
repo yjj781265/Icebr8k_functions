@@ -544,6 +544,132 @@ export const notificationUpdateDev = functions.firestore
       }
     });
 
+export const chatMemberAddDev = functions.firestore
+    .document(`IbChats${dbSuffix}/{chatId}/IbMembers${dbSuffix}/{memberId}`)
+    .onCreate(async ( snapshot, context) => {
+      console.log('chatMemeberAddDev');
+      const chatId :string = context.params.chatId;
+      const memberId : string = context.params.memberId;
+
+      const chatRef = admin
+          .firestore()
+          .collection(`IbChats${dbSuffix}`)
+          .doc(chatId);
+
+
+      if (!(await chatRef.get()).exists) {
+        console.warn('document does not exist, failed to increment');
+        return;
+      } else {
+        console.info('document does exist, update chat');
+      }
+
+      // update member uid array, and increment member count
+      try {
+        const ibChatSnapshot = await chatRef.get();
+        if (snapshot.exists) {
+          const memberUids : string[] = ibChatSnapshot.data()!['memberUids'];
+          memberUids.push(memberId);
+          memberUids.sort();
+          console.log(`sorted array: ${memberUids}`);
+          await chatRef.update({'memberUids': memberUids});
+          Counter.incrementBy(chatRef, 'memberCount', 1);
+        }
+      } catch (e) {
+        console.log('Transaction failure:', e);
+      }
+    });
+
+export const chatMemberDeleteDev = functions.firestore
+    .document(`IbChats${dbSuffix}/{chatId}/IbMembers${dbSuffix}/{memberId}`)
+    .onDelete(async ( snapshot, context) => {
+      console.log('chatMemeberDeleteDev');
+      const chatId :string = context.params.chatId;
+      const memberId : string = context.params.memberId;
+
+      const chatRef = admin
+          .firestore()
+          .collection(`IbChats${dbSuffix}`)
+          .doc(chatId);
+
+      if (!(await chatRef.get()).exists) {
+        console.warn('document does not exist, failed to increment');
+        return;
+      } else {
+        console.info('document does exist, update chat');
+      }
+
+      // update member uid array, and decrement member count
+      try {
+        const ibChatSnapshot = await chatRef.get();
+        if (snapshot.exists) {
+          const memberUids : string[] = ibChatSnapshot.data()!['memberUids'];
+          memberUids.forEach((value, index) =>{
+            if (value == memberId) {
+              memberUids.splice(index, 1);
+            }
+          });
+          memberUids.sort();
+          console.log(`sorted array: ${memberUids}`);
+          await chatRef.update({'memberUids': memberUids});
+          Counter.incrementBy(chatRef, 'memberCount', -1);
+        }
+      } catch (e) {
+        console.log('Transaction failure:', e);
+      }
+    });
+
+export const chatMsgAddDev = functions.firestore
+    .document(`IbChats${dbSuffix}/{chatId}/IbMessages${dbSuffix}/{messageId}`)
+    .onCreate(async ( snapshot, context) => {
+      console.log('chatLastMsgUpdateDev');
+      const chatId :string = context.params.chatId;
+      const chatRef = admin
+          .firestore()
+          .collection(`IbChats${dbSuffix}`)
+          .doc(chatId);
+
+      if (!(await chatRef.get()).exists) {
+        console.warn('document does not exist, failed to increment');
+        return;
+      } else {
+        console.info('document does exist, update chat');
+      }
+
+      // update lastmessage and message count;
+      try {
+        await chatRef.update({'lastMessage': snapshot.data()});
+        Counter.incrementBy(chatRef, 'messageCount', 1);
+      } catch (e) {
+        console.log('Transaction failure:', e);
+      }
+    });
+
+export const chatMsgDeleteDev = functions.firestore
+    .document(`IbChats${dbSuffix}/{chatId}/IbMessages${dbSuffix}/{messageId}`)
+    .onDelete(async ( snapshot, context) => {
+      console.log('chatMsgDeleteDev');
+      const chatId :string = context.params.chatId;
+      const chatRef = admin
+          .firestore()
+          .collection(`IbChats${dbSuffix}`)
+          .doc(chatId);
+
+      if (!(await chatRef.get()).exists) {
+        console.warn('document does not exist, failed to decrement');
+        return;
+      } else {
+        console.info('document does exist, update chat');
+      }
+
+      // update message count;
+      try {
+        Counter.incrementBy(chatRef, 'messageCount', -1);
+      } catch (e) {
+        console.log('Transaction failure:', e);
+      }
+    });
+
 
 /**
  * Adds two numbers together.
