@@ -546,7 +546,7 @@ export const notificationUpdateDev = functions.firestore
 
 export const chatMemberAddDev = functions.firestore
     .document(`IbChats${dbSuffix}/{chatId}/IbMembers${dbSuffix}/{memberId}`)
-    .onCreate(async ( snapshot, context) => {
+    .onCreate(async (_,context) => {
       console.log('chatMemeberAddDev');
       const chatId :string = context.params.chatId;
       const memberId : string = context.params.memberId;
@@ -556,8 +556,9 @@ export const chatMemberAddDev = functions.firestore
           .collection(`IbChats${dbSuffix}`)
           .doc(chatId);
 
+      const ibChatSnapshot = await chatRef.get();
 
-      if (!(await chatRef.get()).exists) {
+      if (!ibChatSnapshot.exists) {
         console.warn('document does not exist, failed to increment');
         return;
       } else {
@@ -566,15 +567,8 @@ export const chatMemberAddDev = functions.firestore
 
       // update member uid array, and increment member count
       try {
-        const ibChatSnapshot = await chatRef.get();
-        if (snapshot.exists) {
-          const memberUids : string[] = ibChatSnapshot.data()!['memberUids'];
-          memberUids.push(memberId);
-          memberUids.sort();
-          console.log(`sorted array: ${memberUids}`);
-          await chatRef.update({'memberUids': memberUids});
+          await chatRef.update({'memberUids': admin.firestore.FieldValue.arrayUnion(memberId)});
           Counter.incrementBy(chatRef, 'memberCount', 1);
-        }
       } catch (e) {
         console.log('Transaction failure:', e);
       }
@@ -591,8 +585,8 @@ export const chatMemberDeleteDev = functions.firestore
           .firestore()
           .collection(`IbChats${dbSuffix}`)
           .doc(chatId);
-
-      if (!(await chatRef.get()).exists) {
+      const ibChatSnapshot = await chatRef.get();
+      if (!ibChatSnapshot.exists) {
         console.warn('document does not exist, failed to increment');
         return;
       } else {
@@ -601,19 +595,9 @@ export const chatMemberDeleteDev = functions.firestore
 
       // update member uid array, and decrement member count
       try {
-        const ibChatSnapshot = await chatRef.get();
-        if (snapshot.exists) {
-          const memberUids : string[] = ibChatSnapshot.data()!['memberUids'];
-          memberUids.forEach((value, index) =>{
-            if (value == memberId) {
-              memberUids.splice(index, 1);
-            }
-          });
-          memberUids.sort();
-          console.log(`sorted array: ${memberUids}`);
-          await chatRef.update({'memberUids': memberUids});
-          Counter.incrementBy(chatRef, 'memberCount', -1);
-        }
+        await chatRef.update({'memberUids': admin.firestore.FieldValue.arrayRemove(memberId)});
+        Counter.incrementBy(chatRef, 'memberCount', -1);
+        
       } catch (e) {
         console.log('Transaction failure:', e);
       }
