@@ -546,7 +546,7 @@ export const notificationUpdateDev = functions.firestore
 
 export const chatMemberAddDev = functions.firestore
     .document(`IbChats${dbSuffix}/{chatId}/IbMembers${dbSuffix}/{memberId}`)
-    .onCreate(async (_,context) => {
+    .onCreate(async (_, context) => {
       console.log('chatMemeberAddDev');
       const chatId :string = context.params.chatId;
       const memberId : string = context.params.memberId;
@@ -567,8 +567,8 @@ export const chatMemberAddDev = functions.firestore
 
       // update member uid array, and increment member count
       try {
-          await chatRef.update({'memberUids': admin.firestore.FieldValue.arrayUnion(memberId)});
-          Counter.incrementBy(chatRef, 'memberCount', 1);
+        await chatRef.update({'memberUids': admin.firestore.FieldValue.arrayUnion(memberId)});
+        Counter.incrementBy(chatRef, 'memberCount', 1);
       } catch (e) {
         console.log('Transaction failure:', e);
       }
@@ -597,7 +597,6 @@ export const chatMemberDeleteDev = functions.firestore
       try {
         await chatRef.update({'memberUids': admin.firestore.FieldValue.arrayRemove(memberId)});
         Counter.incrementBy(chatRef, 'memberCount', -1);
-        
       } catch (e) {
         console.log('Transaction failure:', e);
       }
