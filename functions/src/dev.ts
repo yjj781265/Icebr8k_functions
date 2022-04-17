@@ -160,7 +160,7 @@ export const questionAddTriggerDev = functions.firestore
     .onCreate(async (snapshot) => {
       console.log('questionAddTriggerDev');
       const creatorId: string | undefined | null = snapshot.data().creatorId;
-      const tagIds: string[] = snapshot.data().tagIds;
+      const tags: string[] = snapshot.data().tags;
       if (creatorId == null || creatorId == undefined) {
         return;
       }
@@ -180,7 +180,7 @@ export const questionAddTriggerDev = functions.firestore
 
       // + user asked size
       try {
-        await handleTagQuestionCount(true, tagIds);
+        await handleTagQuestionCount(true, tags);
         Counter.incrementBy(userRef, 'askedCount', 1);
       } catch (e) {
         console.log('Transaction failure:', e);
@@ -192,7 +192,7 @@ export const questionDeleteTriggerDev = functions.firestore
     .onDelete(async (snapshot) => {
       console.log('questionDeleteTriggerDev');
       const creatorId: string | undefined | null = snapshot.data().creatorId;
-      const tagIds: string[] = snapshot.data().tagIds;
+      const tags: string[] = snapshot.data().tags;
       if (creatorId == null || creatorId == undefined) {
         return;
       }
@@ -210,7 +210,7 @@ export const questionDeleteTriggerDev = functions.firestore
 
       // - user asked size
       try {
-        await handleTagQuestionCount(false, tagIds);
+        await handleTagQuestionCount(false, tags);
         Counter.incrementBy(userRef, 'askedCount', -1);
       } catch (e) {
         console.log('Transaction failure:', e);
@@ -655,13 +655,12 @@ export const chatMsgDeleteDev = functions.firestore
 
 
 /**
- * Adds two numbers together.
  * @param {boolean} isIncrement add or decrease count by 1.
- * @param {string[]} tagIds array of tagIds.
+ * @param {string[]} tags array of tags.
  */
-async function handleTagQuestionCount(isIncrement: boolean, tagIds: string[] ) {
-  for (let i=0; i<tagIds.length; i++) {
-    const id = tagIds[i];
+async function handleTagQuestionCount(isIncrement: boolean, tags: string[] ) {
+  for (let i=0; i<tags.length; i++) {
+    const id = tags[i];
     console.log('handleTagQuestionCount');
     const tagRef = admin
         .firestore()
