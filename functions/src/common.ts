@@ -17,7 +17,7 @@ export const sendStatusEmail = functions.https.onCall((data) => {
     subject = 'Your Icebr8k profile is approved';
     html = `<p>Hello ${fName},</p>
       <div>
-      <p>Congratulations, your Icebr8k profile is approved! Now you can login to your Icebr8k app to find people with common interests aroud, have fun and enjoy the journey!</p>
+      <p>Congratulations, your Icebr8k profile is approved! Now you can login to your Icebr8k app to find people with common interests around, have fun and enjoy the journey!</p>
       <div>&nbsp;</div>
       <div><img src="https://firebasestorage.googleapis.com/v0/b/icebr8k-flutter.appspot.com/o/admin_files%2Flogo.png?alt=media&amp;token=f5102025-e92c-472c-8c04-e6370cad707c" alt="icebr8k logo" width="31" height="31" /></div>
       <div>Junjie Yang(CTO of Icebr8k)</div>

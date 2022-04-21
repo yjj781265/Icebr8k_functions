@@ -37,6 +37,7 @@ export const answerAddTriggerDev = functions.firestore
       // + poll and choice count
       try {
         Counter.incrementBy(questionRef, 'pollSize', 1);
+        Counter.incrementBy(questionRef, 'points', 1);
         Counter.incrementBy(questionRef, choiceId, 1);
       } catch (e) {
         console.log('Transaction failure:', e);
@@ -124,6 +125,7 @@ export const answerDeleteTriggerDev = functions.firestore
       // - poll size
       try {
         Counter.incrementBy(questionRef, 'pollSize', -1);
+        Counter.incrementBy(questionRef, 'points', -1);
         Counter.incrementBy(questionRef, choiceId, -1);
       } catch (e) {
         console.log('Transaction failure:', e);
@@ -240,6 +242,7 @@ export const commentAddTriggerDev = functions.firestore
       // + comment size
       try {
         Counter.incrementBy(questionRef, 'comments', 1);
+        Counter.incrementBy(questionRef, 'points', 2);
       } catch (e) {
         console.log('Transaction failure:', e);
       }
@@ -269,6 +272,7 @@ export const commentDeleteTriggerDev = functions.firestore
       // - comment size
       try {
         Counter.incrementBy(questionRef, 'comments', -1);
+        Counter.incrementBy(questionRef, 'points', -2);
       } catch (e) {
         console.log('Transaction failure:', e);
       }
@@ -298,6 +302,7 @@ export const likeAddTriggerDev = functions.firestore
       // + like count
       try {
         Counter.incrementBy(questionRef, 'likes', 1);
+        Counter.incrementBy(questionRef, 'points', 1);
       } catch (e) {
         console.log('Transaction failure:', e);
       }
@@ -327,6 +332,7 @@ export const likeDeleteTriggerDev = functions.firestore
       // - like count
       try {
         Counter.incrementBy(questionRef, 'likes', -1);
+        Counter.incrementBy(questionRef, 'points', -1);
       } catch (e) {
         console.log('Transaction failure:', e);
       }
