@@ -400,7 +400,7 @@ export const commentLikeDeleteTriggerDev = functions.firestore
 export const commentReplyAddTriggerDev = functions.firestore
     .document(`IbQuestions${dbSuffix}/{docId}/Comments${dbSuffix}/{commentId}/Comments-Replies${dbSuffix}/{replyId}`)
     .onCreate(async (snapshot) => {
-      console.log('commentLikeAddTriggerDev');
+      console.log('commentReplyAddTriggerDev');
       const commentId: string = snapshot.data().commentId;
       const questionId: string | undefined | null = snapshot.data().questionId;
       if (questionId == null || questionId == undefined) {
