@@ -397,66 +397,6 @@ export const commentLikeDeleteTriggerDev = functions.firestore
       }
     });
 
-export const commentReplyAddTriggerDev = functions.firestore
-    .document(`IbQuestions${dbSuffix}/{docId}/Comments${dbSuffix}/{commentId}/Comments-Replies${dbSuffix}/{replyId}`)
-    .onCreate(async (snapshot) => {
-      console.log('commentReplyAddTriggerDev');
-      const commentId: string = snapshot.data().commentId;
-      const questionId: string | undefined | null = snapshot.data().questionId;
-      if (questionId == null || questionId == undefined) {
-        return;
-      }
-
-      const commentRef = admin
-          .firestore()
-          .collection(`IbQuestions${dbSuffix}`)
-          .doc(questionId).collection(`Comments${dbSuffix}`).doc(commentId);
-
-      if (!(await commentRef.get()).exists) {
-        console.warn('document does not exist, failed to increment');
-        return;
-      } else {
-        console.info('document does exist, increment -1');
-      }
-
-      // + comment reply count
-      try {
-        Counter.incrementBy(commentRef, 'replies', 1);
-      } catch (e) {
-        console.log('Transaction failure:', e);
-      }
-    });
-
-export const commentReplyDeleteTriggerDev = functions.firestore
-    .document(`IbQuestions${dbSuffix}/{docId}/Comments${dbSuffix}/{uid}/Comments-Replies${dbSuffix}/{documentId}`)
-    .onDelete(async (snapshot) => {
-      console.log('commentReplyDeleteTriggerDev');
-      const commentId: string = snapshot.data().commentId;
-      const questionId: string | undefined | null = snapshot.data().questionId;
-      if (questionId == null || questionId == undefined) {
-        return;
-      }
-
-      const commentRef = admin
-          .firestore()
-          .collection(`IbQuestions${dbSuffix}`)
-          .doc(questionId).collection(`Comments${dbSuffix}`).doc(commentId);
-
-      if (!(await commentRef.get()).exists) {
-        console.warn('document does not exist, failed to increment');
-        return;
-      } else {
-        console.info('document does exist, increment -1');
-      }
-
-      // - comment reply count
-      try {
-        Counter.incrementBy(commentRef, 'replies', -1);
-      } catch (e) {
-        console.log('Transaction failure:', e);
-      }
-    });
-
 export const notificationAddDev = functions.firestore
     .document(`IbUsers${dbSuffix}/{docId}/IbNotifications${dbSuffix}/{notificationId}`)
     .onCreate(async (snapshot) => {
