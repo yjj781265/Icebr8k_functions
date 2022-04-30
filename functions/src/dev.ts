@@ -162,6 +162,7 @@ export const questionAddTriggerDev = functions.firestore
     .onCreate(async (snapshot) => {
       console.log('questionAddTriggerDev');
       const creatorId: string | undefined | null = snapshot.data().creatorId;
+      const isPublic: boolean = snapshot.data().isPublic;
       const tags: string[] = snapshot.data().tags;
       if (creatorId == null || creatorId == undefined) {
         return;
@@ -182,7 +183,10 @@ export const questionAddTriggerDev = functions.firestore
 
       // + user asked size
       try {
-        await handleTagQuestionCount(true, tags);
+        if (isPublic) {
+          await handleTagQuestionCount(true, tags);
+        }
+
         Counter.incrementBy(userRef, 'askedCount', 1);
       } catch (e) {
         console.log('Transaction failure:', e);
@@ -194,6 +198,7 @@ export const questionDeleteTriggerDev = functions.firestore
     .onDelete(async (snapshot) => {
       console.log('questionDeleteTriggerDev');
       const creatorId: string | undefined | null = snapshot.data().creatorId;
+      const isPublic: boolean = snapshot.data().isPublic;
       const tags: string[] = snapshot.data().tags;
       if (creatorId == null || creatorId == undefined) {
         return;
@@ -212,6 +217,9 @@ export const questionDeleteTriggerDev = functions.firestore
 
       // - user asked size
       try {
+        if (isPublic) {
+          await handleTagQuestionCount(true, tags);
+        }
         await handleTagQuestionCount(false, tags);
         Counter.incrementBy(userRef, 'askedCount', -1);
       } catch (e) {
