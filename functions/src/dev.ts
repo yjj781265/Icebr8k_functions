@@ -5,10 +5,17 @@ it only talks to Firebase with collection has -dev suffix
 
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
-import './counter';
-import {Counter} from './counter';
+import './utils';
+import {utils} from './utils';
 
 const dbSuffix = '-dev';
+const kFriendRequest: string = 'friend_request';
+const kCircleInvite:string = 'circle_invite';
+const kCircleRequest:string = 'circle_request';
+const kPollComment:string = 'poll_comment';
+const kNewVote:string = 'new_vote';
+const kPollLike:string = 'new_like_poll';
+const kPollCommentLike:string = 'new_like_comment';
 
 admin.initializeApp();
 
@@ -18,27 +25,35 @@ export const answerAddTriggerDev = functions.firestore
       console.log('answerAddTriggerDev');
       const questionId: string | undefined | null = snapshot.data().questionId;
       const choiceId: string = snapshot.data().choiceId;
+      const isAnonymous: boolean = snapshot.data().isAnonymous;
       if (questionId == null || questionId == undefined) {
         return;
       }
 
-      const questionRef = admin
+      const questionDoc = await admin
           .firestore()
           .collection(`IbQuestions${dbSuffix}`)
-          .doc(`${questionId}`);
+          .doc(`${questionId}`).get();
 
-      if (!(await questionRef.get()).exists) {
+      if (!questionDoc.exists) {
         console.warn('document does not exist, failed to increment');
         return;
       } else {
         console.info('document does exist, increment -1');
       }
 
-      // + poll and choice count
+      // + poll and choice count and notify user new vote if answer is not Anonymous
       try {
-        Counter.incrementBy(questionRef, 'pollSize', 1);
-        Counter.incrementBy(questionRef, 'points', 1);
-        Counter.incrementBy(questionRef, choiceId, 1);
+        utils.updateCounter(questionDoc.ref, 'pollSize', 1);
+        utils.updateCounter(questionDoc.ref, 'points', 1);
+        utils.updateCounter(questionDoc.ref, choiceId, 1);
+        const receiverUid: string = questionDoc.data()!.creatorId;
+
+        if (!isAnonymous) {
+          await utils.addNotification('', '', kNewVote,
+              admin.firestore.FieldValue.serverTimestamp(),
+              false, snapshot.ref.id, receiverUid, dbSuffix);
+        }
       } catch (e) {
         console.log('Transaction failure:', e);
       }
@@ -62,7 +77,7 @@ export const answerAddTriggerDev = functions.firestore
 
       // update user answered size
       try {
-        Counter.incrementBy(userRef, 'answeredCount', 1);
+        utils.updateCounter(userRef, 'answeredCount', 1);
       } catch (e) {
         console.log('Transaction failure:', e);
       }
@@ -93,8 +108,8 @@ export const answerUpdateTriggerDev = functions.firestore
 
       // update choice count
       try {
-        Counter.incrementBy(questionRef, beforeChoiceId, -1);
-        Counter.incrementBy(questionRef, afterChoiceId, 1);
+        utils.updateCounter(questionRef, beforeChoiceId, -1);
+        utils.updateCounter(questionRef, afterChoiceId, 1);
       } catch (e) {
         console.log('Transaction failure:', e);
       }
@@ -124,9 +139,9 @@ export const answerDeleteTriggerDev = functions.firestore
 
       // - poll size
       try {
-        Counter.incrementBy(questionRef, 'pollSize', -1);
-        Counter.incrementBy(questionRef, 'points', -1);
-        Counter.incrementBy(questionRef, choiceId, -1);
+        utils.updateCounter(questionRef, 'pollSize', -1);
+        utils.updateCounter(questionRef, 'points', -1);
+        utils.updateCounter(questionRef, choiceId, -1);
       } catch (e) {
         console.log('Transaction failure:', e);
       }
@@ -151,7 +166,7 @@ export const answerDeleteTriggerDev = functions.firestore
 
       // - user answered size
       try {
-        Counter.incrementBy(userRef, 'answeredCount', -1);
+        utils.updateCounter(userRef, 'answeredCount', -1);
       } catch (e) {
         console.log('Transaction failure:', e);
       }
@@ -187,7 +202,7 @@ export const questionAddTriggerDev = functions.firestore
           await handleTagQuestionCount(true, tags);
         }
 
-        Counter.incrementBy(userRef, 'askedCount', 1);
+        utils.updateCounter(userRef, 'askedCount', 1);
       } catch (e) {
         console.log('Transaction failure:', e);
       }
@@ -221,17 +236,20 @@ export const questionDeleteTriggerDev = functions.firestore
           await handleTagQuestionCount(true, tags);
         }
         await handleTagQuestionCount(false, tags);
-        Counter.incrementBy(userRef, 'askedCount', -1);
+        utils.updateCounter(userRef, 'askedCount', -1);
       } catch (e) {
         console.log('Transaction failure:', e);
       }
     });
 
 export const commentAddTriggerDev = functions.firestore
-    .document(`IbQuestions${dbSuffix}/{docId}/Comments${dbSuffix}/{uid}`)
+    .document(`IbQuestions${dbSuffix}/{docId}/Comments${dbSuffix}/{commentId}`)
     .onCreate(async (snapshot) => {
       console.log('commentAddTriggerDev');
       const questionId: string | undefined | null = snapshot.data().questionId;
+      const notifyUid: string = snapshot.data().notifyUid;
+      const uid: string = snapshot.data().uid;
+      const commentId: string = snapshot.data().commentId;
       if (questionId == null || questionId == undefined) {
         return;
       }
@@ -247,10 +265,12 @@ export const commentAddTriggerDev = functions.firestore
       } else {
         console.info('document does exist, increment -1');
       }
-      // + comment size
+      // + comment size and notify question creator that new comment is added
       try {
-        Counter.incrementBy(questionRef, 'comments', 1);
-        Counter.incrementBy(questionRef, 'points', 2);
+        utils.updateCounter(questionRef, 'comments', 1);
+        utils.updateCounter(questionRef, 'points', 2);
+        utils.addNotification(' ', commentId, kPollComment,
+            admin.firestore.FieldValue.serverTimestamp(), false, uid, notifyUid, dbSuffix);
       } catch (e) {
         console.log('Transaction failure:', e);
       }
@@ -279,8 +299,8 @@ export const commentDeleteTriggerDev = functions.firestore
 
       // - comment size
       try {
-        Counter.incrementBy(questionRef, 'comments', -1);
-        Counter.incrementBy(questionRef, 'points', -2);
+        utils.updateCounter(questionRef, 'comments', -1);
+        utils.updateCounter(questionRef, 'points', -2);
       } catch (e) {
         console.log('Transaction failure:', e);
       }
@@ -291,26 +311,31 @@ export const likeAddTriggerDev = functions.firestore
     .onCreate(async (snapshot) => {
       console.log('likeAddTriggerDev');
       const questionId: string | undefined | null = snapshot.data().questionId;
+      const senderId: string = snapshot.data().uid;
       if (questionId == null || questionId == undefined) {
         return;
       }
 
-      const questionRef = admin
+      const questionDoc = await admin
           .firestore()
           .collection(`IbQuestions${dbSuffix}`)
-          .doc(`${questionId}`);
+          .doc(`${questionId}`).get();
 
-      if (!(await questionRef.get()).exists) {
+
+      if (!questionDoc.exists) {
         console.warn('document does not exist, failed to increment');
         return;
       } else {
         console.info('document does exist, increment -1');
       }
 
-      // + like count
+      // + like count and notify question creator about the like
       try {
-        Counter.incrementBy(questionRef, 'likes', 1);
-        Counter.incrementBy(questionRef, 'points', 1);
+        utils.updateCounter(questionDoc.ref, 'likes', 1);
+        utils.updateCounter(questionDoc.ref, 'points', 1);
+        const recipientId = questionDoc.data()!.creatorId;
+        utils.addNotification('', questionId, kPollLike,
+            admin.firestore.FieldValue.serverTimestamp(), false, senderId, recipientId, dbSuffix);
       } catch (e) {
         console.log('Transaction failure:', e);
       }
@@ -339,37 +364,41 @@ export const likeDeleteTriggerDev = functions.firestore
 
       // - like count
       try {
-        Counter.incrementBy(questionRef, 'likes', -1);
-        Counter.incrementBy(questionRef, 'points', -1);
+        utils.updateCounter(questionRef, 'likes', -1);
+        utils.updateCounter(questionRef, 'points', -1);
       } catch (e) {
         console.log('Transaction failure:', e);
       }
     });
 
 export const commentLikeAddTriggerDev = functions.firestore
-    .document(`IbQuestions${dbSuffix}/{docId}/Comments${dbSuffix}/{uid}/Comments-Likes${dbSuffix}/{documentId}`)
+    .document(`IbQuestions${dbSuffix}/{docId}/Comments${dbSuffix}/{id}/Comments-Likes${dbSuffix}/{documentId}`)
     .onCreate(async (snapshot) => {
       console.log('commentLikeAddTriggerDev');
       const commentId: string | undefined | null = snapshot.data().commentId;
       const questionId: string | undefined | null = snapshot.data().questionId;
+      const senderId: string = snapshot.data().uid;
       if (commentId == null || commentId == undefined) {
         return;
       }
 
-      const commentRef = admin
+      const commentDoc = await admin
           .firestore()
           .collection(`IbQuestions${dbSuffix}`)
-          .doc(`${questionId}`).collection(`Comments${dbSuffix}`).doc(`${commentId}`);
-      if (!(await commentRef.get()).exists) {
+          .doc(`${questionId}`).collection(`Comments${dbSuffix}`).doc(`${commentId}`).get();
+      if (!commentDoc.exists) {
         console.warn('document does not exist, failed to increment');
         return;
       } else {
-        console.info('document does exist, increment -1');
+        console.info('document does exist, increment +1');
       }
 
-      // + comment like count
+      // + comment like count and notify comment creator
       try {
-        Counter.incrementBy(commentRef, 'likes', 1);
+        utils.updateCounter(commentDoc.ref, 'likes', 1);
+        const notifyUid: string = commentDoc.data()!.notifyUid;
+        utils.addNotification('', commentId, kPollCommentLike,
+            admin.firestore.FieldValue.serverTimestamp(), false, senderId, notifyUid, dbSuffix);
       } catch (e) {
         console.log('Transaction failure:', e);
       }
@@ -399,7 +428,7 @@ export const commentLikeDeleteTriggerDev = functions.firestore
 
       // - comment like count
       try {
-        Counter.incrementBy(commentRef, 'likes', -1);
+        utils.updateCounter(commentRef, 'likes', -1);
       } catch (e) {
         console.log('Transaction failure:', e);
       }
@@ -415,14 +444,6 @@ export const notificationAddDev = functions.firestore
       const senderId: string = snapshot.data().senderId;
       const recipientId: string = snapshot.data().recipientId;
       const id: string = snapshot.data().id;
-      const kFriendRequest: string = 'friend_request';
-      const kCircleInvite:string = 'circle_invite';
-      const kCircleRequest:string = 'circle_request';
-      const kPollComment:string = 'poll_comment';
-      const kNewVote:string = 'new_vote';
-      const kPollLike:string = 'new_like_poll';
-      const kPollCommentLike:string = 'new_like_comment';
-
       if (isRead) {
         return;
       }
@@ -432,7 +453,11 @@ export const notificationAddDev = functions.firestore
           .collection(`IbUsers${dbSuffix}`)
           .doc(senderId).get();
 
-      if (!userDoc.exists) {
+      const recipientDoc = await admin
+          .firestore()
+          .collection(`IbUsers${dbSuffix}`)
+          .doc(recipientId).get();
+      if (!userDoc.exists || !recipientDoc.exists) {
         console.warn('document does not exist, failed to increment');
         return;
       } else {
@@ -444,29 +469,29 @@ export const notificationAddDev = functions.firestore
         let title:string = '';
         let body:string = '';
         const senderUsername = await userDoc.data()!.username;
-        const settings:{[key: string]: boolean} = await userDoc.data()!.settings;
+        const settings = await recipientDoc.data()!.settings;
         if (senderUsername == undefined) {
           return;
         }
         title = senderUsername;
-        if (kFriendRequest == type) {
+        if (kFriendRequest == type && (settings.friendRequestN || settings == undefined)) {
           body = 'Send you a friend request';
-        } else if (kCircleInvite == type && settings.circleInviteN) {
+        } else if (kCircleInvite == type && (settings.circleInviteN || settings == undefined)) {
           body = 'Invited you to a circle';
-        } else if (kCircleRequest == type && settings.circleRequestN ) {
-          body = 'Requested to join a circle';
-        } else if (kPollComment == type && settings.pollCommentN) {
+        } else if (kCircleRequest == type && (settings.circleRequestN || settings == undefined) ) {
+          body = 'Send a request to join a circle';
+        } else if (kPollComment == type && (settings.pollCommentN || settings == undefined)) {
           body = 'Added a new comment on one of your polls';
-        } else if (kPollCommentLike == type && settings.pollCommentLikesN) {
+        } else if (kPollCommentLike == type && (settings.pollCommentLikesN || settings == undefined)) {
           body = 'Liked one of your comments on a poll';
-        } else if (kPollLike == type && settings.pollLikesN) {
+        } else if (kPollLike == type && (settings.pollLikesN|| settings == undefined)) {
           body = 'Liked one of your polls';
-        } else if (kNewVote == type && settings.pollVoteN) {
-          body = 'Just voted one of your polls';
+        } else if (kNewVote == type && (settings.pollVoteN || settings == undefined)) {
+          body = 'Just voted on one of your polls';
         } else {
           return;
         }
-        await sendNotifications([recipientId], {'type': type, 'id': id, 'url': url}, body, title, false);
+        await utils.sendPushNotifications([recipientId], {'type': type, 'id': id, 'url': url}, body, title, false, dbSuffix);
       } catch (e) {
         console.log('Transaction failure:', e);
       }
@@ -496,7 +521,7 @@ export const chatMemberAddDev = functions.firestore
       // update member uid array, and increment member count
       try {
         await chatRef.update({'memberUids': admin.firestore.FieldValue.arrayUnion(memberId)});
-        Counter.incrementBy(chatRef, 'memberCount', 1);
+        utils.updateCounter(chatRef, 'memberCount', 1);
       } catch (e) {
         console.log('Transaction failure:', e);
       }
@@ -524,7 +549,7 @@ export const chatMemberDeleteDev = functions.firestore
       // update member uid array, and decrement member count
       try {
         await chatRef.update({'memberUids': admin.firestore.FieldValue.arrayRemove(memberId)});
-        Counter.incrementBy(chatRef, 'memberCount', -1);
+        utils.updateCounter(chatRef, 'memberCount', -1);
       } catch (e) {
         console.log('Transaction failure:', e);
       }
@@ -550,7 +575,7 @@ export const chatMsgAddDev = functions.firestore
       // update lastmessage and message count;
       try {
         await chatRef.update({'lastMessage': snapshot.data()});
-        Counter.incrementBy(chatRef, 'messageCount', 1);
+        utils.updateCounter(chatRef, 'messageCount', 1);
       } catch (e) {
         console.log('Transaction failure:', e);
       }
@@ -575,7 +600,7 @@ export const chatMsgDeleteDev = functions.firestore
 
       // update message count;
       try {
-        Counter.incrementBy(chatRef, 'messageCount', -1);
+        utils.updateCounter(chatRef, 'messageCount', -1);
       } catch (e) {
         console.log('Transaction failure:', e);
       }
@@ -601,67 +626,11 @@ async function handleTagQuestionCount(isIncrement: boolean, tags: string[] ) {
     }
 
     if (isIncrement) {
-      Counter.incrementBy(tagRef, 'questionCount', 1 );
+      utils.updateCounter(tagRef, 'questionCount', 1 );
     } else {
-      Counter.incrementBy(tagRef, 'questionCount', -1 );
+      utils.updateCounter(tagRef, 'questionCount', -1 );
     }
   }
 }
 
-/**
- * @param {string[]} uids the user ids that need to send notification to.
- * @param {Map<string,string>} data hold key values such as senderUid,receiverUid,notification type,attachmentUrl.
- * @param {string} body the body of notification.
- * @param {string} title the title of notification.
- * @param {boolean} incrementCount to increment notification count.
- */
-async function sendNotifications(uids: string[], data:{[key: string]: string}, body:string, title:string, incrementCount:boolean ) {
-  if (uids.length == 0) {
-    return;
-  }
 
-  try {
-    for (const uid of uids) {
-      const userDoc = await admin
-          .firestore()
-          .collection(`IbUsers${dbSuffix}`)
-          .doc(uid.toString()).get();
-      if (userDoc.exists) {
-        let token:string|undefined = userDoc.data()!.fcmToken;
-        token = token == undefined ? '':token;
-        const timestamp:{[key: string]: number} = userDoc.data()!.fcmTokenTimestamp;
-        const secs: number = timestamp._seconds;
-        const now = new Date();
-        const diff:number = (now.getTime()/1000) - secs;
-        const days:number = diff /86400;
-        if (days>180) {
-          // token is stale
-          await admin.messaging().unsubscribeFromTopic(token, `Users${dbSuffix}`);
-          await userDoc.ref.update({'fcmToken': ''});
-          console.warn(`${uid} token is stale, removing from fcm`);
-          continue;
-        }
-
-        let notificationCount: number|undefined = userDoc.data()!.notificationCount;
-        notificationCount = notificationCount == undefined ? 0 :notificationCount;
-
-        if (token == '') {
-          continue;
-        }
-
-        if (incrementCount) {
-          await admin
-              .firestore()
-              .collection(`IbUsers${dbSuffix}`)
-              .doc(uid.toString()).update({'notificationCount': admin.firestore.FieldValue.increment(1)});
-        }
-
-        const androidNotification = {'body': body, 'notificationCount': notificationCount, 'title': title};
-        const message = {'android': {'data': data, 'notification': androidNotification}, 'tokens': [token]};
-        await admin.messaging().sendMulticast(message);
-      }
-    }
-  } catch (e) {
-    console.log('sendNotifications failed', e);
-  }
-}
