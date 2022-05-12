@@ -410,89 +410,63 @@ export const notificationAddDev = functions.firestore
     .onCreate(async (snapshot) => {
       console.log('notificationAddDev');
       const isRead : boolean = snapshot.data().isRead;
+      const type: string = snapshot.data().type;
+      const url: string = snapshot.data().url;
+      const senderId: string = snapshot.data().senderId;
       const recipientId: string = snapshot.data().recipientId;
+      const id: string = snapshot.data().id;
+      const kFriendRequest: string = 'friend_request';
+      const kCircleInvite:string = 'circle_invite';
+      const kCircleRequest:string = 'circle_request';
+      const kPollComment:string = 'poll_comment';
+      const kNewVote:string = 'new_vote';
+      const kPollLike:string = 'new_like_poll';
+      const kPollCommentLike:string = 'new_like_comment';
 
       if (isRead) {
         return;
       }
 
-      const userRef = admin
+      const userDoc = await admin
           .firestore()
           .collection(`IbUsers${dbSuffix}`)
-          .doc(recipientId);
+          .doc(senderId).get();
 
-      if (!(await userRef.get()).exists) {
+      if (!userDoc.exists) {
         console.warn('document does not exist, failed to increment');
         return;
       } else {
-        console.info('document does exist, increment +1');
+        console.info('document does exist');
       }
 
-      // + notificationCount
+      // sendNotification
       try {
-        Counter.incrementBy(userRef, 'notificationCount', 1);
-      } catch (e) {
-        console.log('Transaction failure:', e);
-      }
-    });
-
-export const notificationDeleteDev = functions.firestore
-    .document(`IbUsers${dbSuffix}/{docId}/IbNotifications${dbSuffix}/{notificationId}`)
-    .onDelete(async (snapshot) => {
-      console.log('notificationDeleteDev');
-      const recipientId: string = snapshot.data().recipientId;
-
-      const userRef = admin
-          .firestore()
-          .collection(`IbUsers${dbSuffix}`)
-          .doc(recipientId);
-
-      if (!(await userRef.get()).exists) {
-        console.warn('document does not exist, failed to increment');
-        return;
-      } else {
-        console.info('document does exist, decrement counter');
-      }
-
-      // - notificationCount
-      try {
-        Counter.incrementBy(userRef, 'notificationCount', -1);
-      } catch (e) {
-        console.log('Transaction failure:', e);
-      }
-    });
-
-export const notificationUpdateDev = functions.firestore
-    .document(`IbUsers${dbSuffix}/{docId}/IbNotifications${dbSuffix}/{notificationId}`)
-    .onUpdate(async (snapshot) => {
-      console.log('notificationUpdateDev');
-      const isReadBefore : boolean = snapshot.before.data().isRead;
-      const isReadAfter : boolean = snapshot.after.data().isRead;
-      const recipientId: string = snapshot.after.data().recipientId;
-
-      if ((isReadBefore && isReadAfter)||(!isReadAfter && !isReadBefore)) {
-        return;
-      }
-
-      const userRef = admin
-          .firestore()
-          .collection(`IbUsers${dbSuffix}`)
-          .doc(recipientId);
-
-      if (!(await userRef.get()).exists) {
-        console.warn('document does not exist, failed to increment');
-        return;
-      } else {
-        console.info('document does exist, update counter');
-      }
-
-      // +- notificationCount
-      try {
-        if (isReadBefore && !isReadAfter) {
-          Counter.incrementBy(userRef, 'notificationCount', 1);
-        } else {
-          Counter.incrementBy(userRef, 'notificationCount', -1);
+        let title:string = '';
+        let body:string = '';
+        const senderUsername = await userDoc.data()!.username;
+        const settings:{[key: string]: boolean} = await userDoc.data()!.settings;
+        if (senderUsername == undefined) {
+          return;
         }
+        title = senderUsername;
+        if (kFriendRequest == type) {
+          body = 'Send you a friend request';
+        } else if (kCircleInvite == type && settings.circleInviteN) {
+          body = 'Invited you to a circle';
+        } else if (kCircleRequest == type && settings.circleRequestN ) {
+          body = 'Requested to join a circle';
+        } else if (kPollComment == type && settings.pollCommentN) {
+          body = 'Added a new comment on one of your polls';
+        } else if (kPollCommentLike == type && settings.pollCommentLikesN) {
+          body = 'Liked one of your comments on a poll';
+        } else if (kPollLike == type && settings.pollLikesN) {
+          body = 'Liked one of your polls';
+        } else if (kNewVote == type && settings.pollVoteN) {
+          body = 'Just voted one of your polls';
+        } else {
+          return;
+        }
+        await sendNotifications([recipientId], {'type': type, 'id': id, 'url': url}, body, title, false);
       } catch (e) {
         console.log('Transaction failure:', e);
       }
@@ -631,5 +605,63 @@ async function handleTagQuestionCount(isIncrement: boolean, tags: string[] ) {
     } else {
       Counter.incrementBy(tagRef, 'questionCount', -1 );
     }
+  }
+}
+
+/**
+ * @param {string[]} uids the user ids that need to send notification to.
+ * @param {Map<string,string>} data hold key values such as senderUid,receiverUid,notification type,attachmentUrl.
+ * @param {string} body the body of notification.
+ * @param {string} title the title of notification.
+ * @param {boolean} incrementCount to increment notification count.
+ */
+async function sendNotifications(uids: string[], data:{[key: string]: string}, body:string, title:string, incrementCount:boolean ) {
+  if (uids.length == 0) {
+    return;
+  }
+
+  try {
+    for (const uid of uids) {
+      const userDoc = await admin
+          .firestore()
+          .collection(`IbUsers${dbSuffix}`)
+          .doc(uid.toString()).get();
+      if (userDoc.exists) {
+        let token:string|undefined = userDoc.data()!.fcmToken;
+        token = token == undefined ? '':token;
+        const timestamp:{[key: string]: number} = userDoc.data()!.fcmTokenTimestamp;
+        const secs: number = timestamp._seconds;
+        const now = new Date();
+        const diff:number = (now.getTime()/1000) - secs;
+        const days:number = diff /86400;
+        if (days>180) {
+          // token is stale
+          await admin.messaging().unsubscribeFromTopic(token, `Users${dbSuffix}`);
+          await userDoc.ref.update({'fcmToken': ''});
+          console.warn(`${uid} token is stale, removing from fcm`);
+          continue;
+        }
+
+        let notificationCount: number|undefined = userDoc.data()!.notificationCount;
+        notificationCount = notificationCount == undefined ? 0 :notificationCount;
+
+        if (token == '') {
+          continue;
+        }
+
+        if (incrementCount) {
+          await admin
+              .firestore()
+              .collection(`IbUsers${dbSuffix}`)
+              .doc(uid.toString()).update({'notificationCount': admin.firestore.FieldValue.increment(1)});
+        }
+
+        const androidNotification = {'body': body, 'notificationCount': notificationCount, 'title': title};
+        const message = {'android': {'data': data, 'notification': androidNotification}, 'tokens': [token]};
+        await admin.messaging().sendMulticast(message);
+      }
+    }
+  } catch (e) {
+    console.log('sendNotifications failed', e);
   }
 }

@@ -60,3 +60,4 @@ function sendEmail(email: string, subject: string, html: string) {
       .collection('Mails')
       .add({to: email, message: {subject: subject, html: html}});
 }
+
