@@ -81,10 +81,10 @@ export class utils {
           }
 
           if (incrementCount) {
-            await admin
+            this.updateCounter( admin
                 .firestore()
                 .collection(`IbUsers${dbSuffix}`)
-                .doc(uid.toString()).update({'notificationCount': admin.firestore.FieldValue.increment(1)});
+                .doc(uid.toString()), 'notificationCount', 1);
           }
 
           const androidNotification = {'body': body, 'notificationCount': notificationCount, 'title': title};
@@ -92,8 +92,70 @@ export class utils {
           await admin.messaging().sendMulticast(message);
         }
       }
+      console.info('sendNotifications success');
     } catch (e) {
       console.log('sendNotifications failed', e);
+    }
+  }
+
+  /**
+ *
+ * @param {FirebaseFirestore.DocumentReference<FirebaseFirestore.DocumentData>}chatDoc chat snapshot
+ * @param {FirebaseFirestore.DocumentData}lastMessage lastMessage snapshot
+ * @param {string}dbSuffix database suffix:-dev,-beta,or -prod
+ */
+  static async handleMessageAdd(chatDoc: FirebaseFirestore.DocumentSnapshot<FirebaseFirestore.DocumentData>
+      , lastMessage:FirebaseFirestore.DocumentData, dbSuffix:string) {
+    const senderUid:string = lastMessage.senderUid;
+    const messageType:string = lastMessage.messageType;
+    const memberUids:string[] = chatDoc.data()!.memberUids;
+    const name:string = chatDoc.data()!.name;
+    const readUids:string[] = lastMessage.readUids;
+    const mutedUids:string[] = chatDoc.data()!.mutedUids;
+
+    for (const uid of mutedUids) {
+      const index = memberUids.indexOf(uid);
+      if (index!=-1) {
+        memberUids.splice(index, 1);
+      }
+    }
+
+    for (const uid of readUids) {
+      const index = memberUids.indexOf(uid);
+      if (index!=-1) {
+        memberUids.splice(index, 1);
+      }
+    }
+
+    const index = memberUids.indexOf(senderUid);
+    if (index!=-1) {
+      memberUids.splice(index, 1);
+    }
+
+    if (memberUids.length!=0) {
+      const userDoc = await admin
+          .firestore()
+          .collection(`IbUsers${dbSuffix}`)
+          .doc(senderUid).get();
+      let title:string = '';
+      let body:string = '';
+      const senderUsername = await userDoc.data()!.username;
+      title = name.trim() == ''? senderUsername :name;
+      if ('poll' == messageType) {
+        body = `${senderUsername} shared a poll`;
+      } else if ('icebreaker' == messageType) {
+        body = `${senderUsername} shared an icebreaker`;
+      } else if ('pic' == messageType) {
+        body = `${senderUsername} shared an image`;
+      } else if ('text' == messageType) {
+        body = `${senderUsername}: ${lastMessage.content}`;
+      } else {
+        return;
+      }
+
+      this.sendPushNotifications(memberUids, {'type': 'chat', 'url': chatDoc.ref.id}, body, title, true, dbSuffix);
+    } else {
+      console.log('no uids to send notification to');
     }
   }
 }

@@ -491,7 +491,7 @@ export const notificationAddDev = functions.firestore
         } else {
           return;
         }
-        await utils.sendPushNotifications([recipientId], {'type': type, 'id': id, 'url': url}, body, title, false, dbSuffix);
+        await utils.sendPushNotifications([recipientId], {'type': type, 'notificationId': id, 'url': url}, body, title, false, dbSuffix);
       } catch (e) {
         console.log('Transaction failure:', e);
       }
@@ -521,7 +521,7 @@ export const chatMemberAddDev = functions.firestore
       // update member uid array, and increment member count
       try {
         await chatRef.update({'memberUids': admin.firestore.FieldValue.arrayUnion(memberId)});
-        utils.updateCounter(chatRef, 'memberCount', 1);
+        await utils.updateCounter(chatRef, 'memberCount', 1);
       } catch (e) {
         console.log('Transaction failure:', e);
       }
@@ -549,7 +549,7 @@ export const chatMemberDeleteDev = functions.firestore
       // update member uid array, and decrement member count
       try {
         await chatRef.update({'memberUids': admin.firestore.FieldValue.arrayRemove(memberId)});
-        utils.updateCounter(chatRef, 'memberCount', -1);
+        await utils.updateCounter(chatRef, 'memberCount', -1);
       } catch (e) {
         console.log('Transaction failure:', e);
       }
@@ -560,22 +560,23 @@ export const chatMsgAddDev = functions.firestore
     .onCreate(async ( snapshot, context) => {
       console.log('chatLastMsgUpdateDev');
       const chatId :string = context.params.chatId;
-      const chatRef = admin
+      const chatDoc = await admin
           .firestore()
           .collection(`IbChats${dbSuffix}`)
-          .doc(chatId);
+          .doc(chatId).get();
 
-      if (!(await chatRef.get()).exists) {
+      if (!chatDoc.exists) {
         console.warn('document does not exist, failed to increment');
         return;
       } else {
         console.info('document does exist, update chat');
       }
 
-      // update lastmessage and message count;
+      // update lastmessage , message count and notify members;
       try {
-        await chatRef.update({'lastMessage': snapshot.data()});
-        utils.updateCounter(chatRef, 'messageCount', 1);
+        await chatDoc.ref.update({'lastMessage': snapshot.data()});
+        await utils.updateCounter(chatDoc.ref, 'messageCount', 1);
+        await utils.handleMessageAdd(chatDoc, snapshot.data(), dbSuffix);
       } catch (e) {
         console.log('Transaction failure:', e);
       }
