@@ -48,6 +48,7 @@ export class utils {
  */
   static async sendPushNotifications(uids: string[], data:{[key: string]: string}, body:string, title:string, incrementCount:boolean, dbSuffix:string ) {
     if (uids.length == 0) {
+      console.debug(`sendPushNotifications ignore, uids are empty`);
       return;
     }
 
@@ -77,6 +78,7 @@ export class utils {
           notificationCount = notificationCount == undefined ? 0 :notificationCount;
 
           if (token == '') {
+            console.warn(`${uid} token is empty, ignore this user`);
             continue;
           }
 

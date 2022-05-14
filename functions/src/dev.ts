@@ -16,6 +16,7 @@ const kPollComment:string = 'poll_comment';
 const kNewVote:string = 'new_vote';
 const kPollLike:string = 'new_like_poll';
 const kPollCommentLike:string = 'new_like_comment';
+const kPollCommentReply:string = 'poll_comment_reply';
 
 admin.initializeApp();
 
@@ -72,7 +73,7 @@ export const answerAddTriggerDev = functions.firestore
         console.warn('document does not exist, failed to increment');
         return;
       } else {
-        console.info('document does exist, increment -1');
+        console.info('document does exist, increment +1');
       }
 
       // update user answered size
@@ -437,7 +438,6 @@ export const commentLikeDeleteTriggerDev = functions.firestore
 export const notificationAddDev = functions.firestore
     .document(`IbUsers${dbSuffix}/{docId}/IbNotifications${dbSuffix}/{notificationId}`)
     .onCreate(async (snapshot) => {
-      console.log('notificationAddDev');
       const isRead : boolean = snapshot.data().isRead;
       const type: string = snapshot.data().type;
       const url: string = snapshot.data().url;
@@ -445,6 +445,7 @@ export const notificationAddDev = functions.firestore
       const recipientId: string = snapshot.data().recipientId;
       const id: string = snapshot.data().id;
       if (isRead) {
+        console.debug(`notificationAddDev ignore, notification is read`);
         return;
       }
 
@@ -470,9 +471,12 @@ export const notificationAddDev = functions.firestore
         let body:string = '';
         const senderUsername = await userDoc.data()!.username;
         const settings = await recipientDoc.data()!.settings;
-        if (senderUsername == undefined) {
+        if (senderUsername == undefined || senderId == recipientId) {
+          console.debug(`notificationAddDev ignore, sender and recipient are the same`);
           return;
         }
+
+        console.info(`notificationAddDev ${type}`);
         title = senderUsername;
         if (kFriendRequest == type && (settings.friendRequestN || settings == undefined)) {
           body = 'Send you a friend request';
@@ -488,12 +492,14 @@ export const notificationAddDev = functions.firestore
           body = 'Liked one of your polls';
         } else if (kNewVote == type && (settings.pollVoteN || settings == undefined)) {
           body = 'Just voted on one of your polls';
+        } else if (kPollCommentReply == type && (settings.pollCommentReplyN || settings == undefined)) {
+          body = 'Just replied a comment you made on a poll';
         } else {
           return;
         }
         await utils.sendPushNotifications([recipientId], {'type': type, 'notificationId': id, 'url': url}, body, title, false, dbSuffix);
       } catch (e) {
-        console.log('Transaction failure:', e);
+        console.error('Transaction failure:', e);
       }
     });
 
