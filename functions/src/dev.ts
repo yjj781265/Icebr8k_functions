@@ -50,7 +50,7 @@ export const answerAddTriggerDev = functions.firestore
         const receiverUid: string = questionDoc.data()!.creatorId;
 
         if (!isAnonymous) {
-          await utils.addNotification('', '', kNewVote,
+          await utils.addNotification('', questionId, kNewVote,
               admin.firestore.FieldValue.serverTimestamp(),
               false, snapshot.ref.id, receiverUid, dbSuffix);
         }
