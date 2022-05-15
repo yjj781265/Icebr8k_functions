@@ -89,7 +89,8 @@ export class utils {
                 .doc(uid.toString()), 'notificationCount', 1);
           }
 
-          const androidNotification = {'body': body, 'notificationCount': notificationCount, 'title': title};
+          const androidNotification = {'body': body, 'notificationCount': notificationCount,
+            'title': title, 'defaultSound': false, 'sound': 'water_drop.mp3', 'channelId': 'icebr8k_custom_channel'};
           const message = {'android': {'data': data, 'notification': androidNotification}, 'tokens': [token]};
           await admin.messaging().sendMulticast(message);
         }
