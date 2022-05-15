@@ -479,21 +479,21 @@ export const notificationAddDev = functions.firestore
         console.info(`notificationAddDev ${type}`);
         title = senderUsername;
         if (kFriendRequest == type && (settings.friendRequestN || settings == undefined)) {
-          body = 'Send you a friend request';
+          body = 'send you a friend request';
         } else if (kCircleInvite == type && (settings.circleInviteN || settings == undefined)) {
-          body = 'Invited you to a circle';
+          body = 'invited you to a circle';
         } else if (kCircleRequest == type && (settings.circleRequestN || settings == undefined) ) {
-          body = 'Send a request to join a circle';
+          body = 'send a request to join a circle';
         } else if (kPollComment == type && (settings.pollCommentN || settings == undefined)) {
-          body = 'Added a new comment on one of your polls';
+          body = 'added a new comment on one of your polls';
         } else if (kPollCommentLike == type && (settings.pollCommentLikesN || settings == undefined)) {
-          body = 'Liked one of your comments on a poll';
+          body = 'liked one of your comments on a poll';
         } else if (kPollLike == type && (settings.pollLikesN|| settings == undefined)) {
-          body = 'Liked one of your polls';
+          body = 'liked one of your polls';
         } else if (kNewVote == type && (settings.pollVoteN || settings == undefined)) {
-          body = 'Just voted on one of your polls';
+          body = 'just voted on one of your polls';
         } else if (kPollCommentReply == type && (settings.pollCommentReplyN || settings == undefined)) {
-          body = 'Just replied a comment you made on a poll';
+          body = 'just replied a comment you made on a poll';
         } else {
           return;
         }
