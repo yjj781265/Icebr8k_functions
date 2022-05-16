@@ -52,12 +52,23 @@ export class utils {
       return;
     }
 
-    try {
-      for (const uid of uids) {
+
+    for (const uid of uids) {
+      try {
+        const userRef = admin
+            .firestore()
+            .collection(`IbUsers${dbSuffix}`)
+            .doc(uid.toString());
+
+        if (incrementCount) {
+          await userRef.update({'notificationCount': admin.firestore.FieldValue.increment(1)});
+        }
+
         const userDoc = await admin
             .firestore()
             .collection(`IbUsers${dbSuffix}`)
             .doc(uid.toString()).get();
+
         if (userDoc.exists) {
           let token:string|undefined = userDoc.data()!.fcmToken;
           token = token == undefined ? '':token;
@@ -74,30 +85,31 @@ export class utils {
             continue;
           }
 
-          let notificationCount: number|undefined = userDoc.data()!.notificationCount;
-          notificationCount = notificationCount == undefined ? 0 :notificationCount;
 
           if (token == '') {
             console.warn(`${uid} token is empty, ignore this user`);
             continue;
           }
 
-          if (incrementCount) {
-            this.updateCounter( admin
-                .firestore()
-                .collection(`IbUsers${dbSuffix}`)
-                .doc(uid.toString()), 'notificationCount', 1);
-          }
+
+          let notificationCount: number|undefined = userDoc.data()!.notificationCount;
+          notificationCount = notificationCount == undefined ? 0 :notificationCount;
+          // / for messaging API reference go to: https://firebase.google.com/docs/reference/admin/node/firebase-admin.messaging.messaging.md#messagingsendmulticast
 
           const androidNotification = {'body': body, 'notificationCount': notificationCount,
             'title': title, 'defaultSound': false, 'sound': 'water_drop.mp3', 'channelId': 'icebr8k_custom_channel'};
-          const message = {'android': {'data': data, 'notification': androidNotification}, 'tokens': [token]};
-          await admin.messaging().sendMulticast(message);
+
+          const aps = {'aps': {'alert': {'body': body, 'title': title},
+            'badge': notificationCount, 'contentAvailable': false, 'sound': 'water_drop.wav'}};
+
+          const message = {'android': {'notification': androidNotification}, 'apns': {'payload': aps}, 'data': data, 'token': token};
+          admin.messaging().send(message);
+          console.info(`sendNotification token msg success`);
         }
+      } catch (e) {
+        console.error('sendNotification failed', e);
+        continue;
       }
-      console.info('sendNotifications success');
-    } catch (e) {
-      console.log('sendNotifications failed', e);
     }
   }
 
