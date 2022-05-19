@@ -15,6 +15,33 @@ export class utils {
   }
 
   /**
+ * @param {boolean} isIncrement add or decrease count by 1.
+ * @param {string[]} tags array of tags.
+ * @param {string} dbSuffix database env.
+ */
+  static async handleTagQuestionCount(isIncrement: boolean, tags: string[], dbSuffix: string ) {
+    for (let i=0; i<tags.length; i++) {
+      const id = tags[i];
+      console.log('handleTagQuestionCount');
+      const tagRef = admin
+          .firestore()
+          .collection(`IbTags${dbSuffix}`)
+          .doc(id.toString());
+
+      if (!(await tagRef.get()).exists) {
+        console.warn('doc does not exist');
+        return;
+      }
+
+      if (isIncrement) {
+        await this.updateCounter(tagRef, 'questionCount', 1 );
+      } else {
+        await this.updateCounter(tagRef, 'questionCount', -1 );
+      }
+    }
+  }
+
+  /**
  * @param {string} body text for the body
  * @param {string} url place to put doc id or imageUrl depends on the type
  * @param {string} type type of notification

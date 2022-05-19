@@ -200,10 +200,58 @@ export const questionAddTriggerDev = functions.firestore
       // + user asked size
       try {
         if (isPublic) {
-          await handleTagQuestionCount(true, tags);
+          await utils.handleTagQuestionCount(true, tags, dbSuffix);
         }
 
         utils.updateCounter(userRef, 'askedCount', 1);
+      } catch (e) {
+        console.log('Transaction failure:', e);
+      }
+    });
+
+export const questionUpdateTriggerDev = functions.firestore
+    .document(`IbQuestions${dbSuffix}/{docId}`)
+    .onUpdate(async (snapshot) => {
+      const newCreatorId: string | undefined | null = snapshot.after.data().creatorId;
+      const newIsPublic: boolean = snapshot.after.data().isPublic;
+      const newTags: string[] = snapshot.after.data().tags;
+
+      const oldCreatorId: string | undefined | null = snapshot.before.data().creatorId;
+      const oldIsPublic: boolean = snapshot.before.data().isPublic;
+      const oldTags: string[] = snapshot.before.data().tags;
+
+
+      if (newCreatorId!=oldCreatorId) {
+        console.log('questionUpdateTriggerDev ignored, creator id is not the same!');
+        return;
+      }
+
+      console.log('questionUpdateTriggerDev');
+
+      if (!oldIsPublic && !newIsPublic) {
+        console.log('questionUpdateTriggerDev no need to update counter on private question');
+        return;
+      }
+
+      try {
+        if (!oldIsPublic && newIsPublic) {
+          console.log('questionUpdateTriggerDev update counter on all new tags');
+          await utils.handleTagQuestionCount(true, newTags, dbSuffix);
+          return;
+        }
+
+        if (oldIsPublic && !newIsPublic) {
+          console.log('questionUpdateTriggerDev decrement counter on all old tags');
+          await utils.handleTagQuestionCount(false, oldTags, dbSuffix);
+          return;
+        }
+
+        if (oldIsPublic && newIsPublic) {
+          console.log('questionUpdateTriggerDev decrement counter on oldtags and increment on new tags');
+          await utils.handleTagQuestionCount(false, oldTags, dbSuffix);
+          await utils.handleTagQuestionCount(true, newTags, dbSuffix);
+          return;
+        }
       } catch (e) {
         console.log('Transaction failure:', e);
       }
@@ -234,9 +282,8 @@ export const questionDeleteTriggerDev = functions.firestore
       // - user asked size
       try {
         if (isPublic) {
-          await handleTagQuestionCount(true, tags);
+          await utils.handleTagQuestionCount(false, tags, dbSuffix);
         }
-        await handleTagQuestionCount(false, tags);
         utils.updateCounter(userRef, 'askedCount', -1);
       } catch (e) {
         console.log('Transaction failure:', e);
@@ -612,32 +659,5 @@ export const chatMsgDeleteDev = functions.firestore
         console.log('Transaction failure:', e);
       }
     });
-
-
-/**
- * @param {boolean} isIncrement add or decrease count by 1.
- * @param {string[]} tags array of tags.
- */
-async function handleTagQuestionCount(isIncrement: boolean, tags: string[] ) {
-  for (let i=0; i<tags.length; i++) {
-    const id = tags[i];
-    console.log('handleTagQuestionCount');
-    const tagRef = admin
-        .firestore()
-        .collection(`IbTags${dbSuffix}`)
-        .doc(id.toString());
-
-    if (!(await tagRef.get()).exists) {
-      console.warn('doc does not exist');
-      return;
-    }
-
-    if (isIncrement) {
-      utils.updateCounter(tagRef, 'questionCount', 1 );
-    } else {
-      utils.updateCounter(tagRef, 'questionCount', -1 );
-    }
-  }
-}
 
 
