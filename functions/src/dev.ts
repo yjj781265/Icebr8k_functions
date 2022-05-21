@@ -10,6 +10,7 @@ import {utils} from './utils';
 
 const dbSuffix = '-dev';
 const kFriendRequest: string = 'friend_request';
+const kFriendAccepted: string = 'friend_accepted';
 const kCircleInvite:string = 'circle_invite';
 const kCircleRequest:string = 'circle_request';
 const kPollComment:string = 'poll_comment';
@@ -527,6 +528,8 @@ export const notificationAddDev = functions.firestore
         title = senderUsername;
         if (kFriendRequest == type && (settings.friendRequestN || settings == undefined)) {
           body = 'send you a friend request';
+        } else if (kFriendAccepted == type) {
+          body = 'accepted your friend request';
         } else if (kCircleInvite == type && (settings.circleInviteN || settings == undefined)) {
           body = 'invited you to a circle';
         } else if (kCircleRequest == type && (settings.circleRequestN || settings == undefined) ) {
