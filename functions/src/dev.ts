@@ -13,8 +13,10 @@ const kFriendRequest: string = 'friend_request';
 const kFriendAccepted: string = 'friend_accepted';
 const kCircleInvite:string = 'circle_invite';
 const kCircleRequest:string = 'circle_request';
+const kProfileLiked:string = 'profile_liked';
 const kPollComment:string = 'poll_comment';
 const kNewVote:string = 'new_vote';
+const kPoll:string = 'poll';
 const kPollLike:string = 'new_like_poll';
 const kPollCommentLike:string = 'new_like_comment';
 const kPollCommentReply:string = 'poll_comment_reply';
@@ -180,7 +182,11 @@ export const questionAddTriggerDev = functions.firestore
       console.log('questionAddTriggerDev');
       const creatorId: string | undefined | null = snapshot.data().creatorId;
       const isPublic: boolean = snapshot.data().isPublic;
+      const questionId :string = snapshot.data().id;
+      const question: string = snapshot.data().question;
+      const isAnonymous: boolean = snapshot.data().isAnonymous;
       const tags: string[] = snapshot.data().tags;
+      const sharedFriendUids: string[] = snapshot.data().sharedFriendUids;
       if (creatorId == null || creatorId == undefined) {
         return;
       }
@@ -190,8 +196,9 @@ export const questionAddTriggerDev = functions.firestore
           .firestore()
           .collection(`IbUsers${dbSuffix}`)
           .doc(`${creatorId}`);
+      const userDoc = await userRef.get();
 
-      if (!(await userRef.get()).exists) {
+      if (!userDoc.exists) {
         console.warn('document does not exist, failed to increment');
         return;
       } else {
@@ -203,8 +210,22 @@ export const questionAddTriggerDev = functions.firestore
         if (isPublic) {
           await utils.handleTagQuestionCount(true, tags, dbSuffix);
         }
-
         utils.updateCounter(userRef, 'askedCount', 1);
+
+        // / send push notification to sharedFriendUids
+        if (!isAnonymous) {
+          const username = userDoc.data()!.username;
+          for (const uid of sharedFriendUids) {
+            const friendDoc = await admin
+                .firestore()
+                .collection(`IbUsers${dbSuffix}`)
+                .doc(`${uid}`).get();
+            const settings = friendDoc.data()!.settings;
+            if (settings.pollNewN) {
+              await utils.sendPushNotifications([uid], {'type': kPoll, 'url': questionId}, question, `${username} post a new poll`, true, dbSuffix);
+            }
+          }
+        }
       } catch (e) {
         console.log('Transaction failure:', e);
       }
@@ -544,6 +565,8 @@ export const notificationAddDev = functions.firestore
           body = 'just voted on one of your polls';
         } else if (kPollCommentReply == type && (settings.pollCommentReplyN || settings == undefined)) {
           body = 'just replied a comment you made on a poll';
+        } else if (kProfileLiked == type && (settings.profileLikesN || settings == undefined)) {
+          body = 'liked your profile in people nearby 📍';
         } else {
           return;
         }
