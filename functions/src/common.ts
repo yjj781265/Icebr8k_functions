@@ -67,11 +67,12 @@ export const deleteAccount = functions.https.onCall(async (data) => {
   const uid: string = data.uid;
 
   try {
+    // admin.auth().deleteUser(uid);
     const userRef = admin.firestore().collection(`IbUsers${dbSuffix}`).doc(uid);
     await userRef.delete();
     console.log(`deleteAccount user deleted`);
 
-    const notificationSnapShot = await userRef.collection(`IbNotification${dbSuffix}`).get();
+    const notificationSnapShot = await userRef.collection(`IbNotifications${dbSuffix}`).get();
     for (const doc of notificationSnapShot.docs) {
       await doc.ref.delete();
     }
@@ -86,26 +87,26 @@ export const deleteAccount = functions.https.onCall(async (data) => {
     const questionsSnapShot = await admin.firestore().collection(`IbQuestions${dbSuffix}`).where('creatorId', '==', uid).get();
     for (const doc of questionsSnapShot.docs) {
       await doc.ref.delete();
+      const commentsSnapShot = await doc.ref.collection(`Comments${dbSuffix}`).get();
+      for (const doc of commentsSnapShot.docs) {
+        await doc.ref.delete();
+      }
+      console.log(`deleteAccount comments deleted`);
+
+      const answersSnapShot = await doc.ref.collection(`Answers${dbSuffix}`).get();
+      for (const doc of answersSnapShot.docs) {
+        await doc.ref.delete();
+      }
+      console.log(`deleteAccount questions answers deleted`);
+
+      const likesSnapShot = await doc.ref.collection(`Likes${dbSuffix}`).get();
+      for (const doc of likesSnapShot.docs) {
+        await doc.ref.delete();
+      }
+      console.log(`deleteAccount questions likes deleted`);
     }
     console.log(`deleteAccount questions deleted`);
 
-    const commentsSnapShot = await admin.firestore().collectionGroup(`Comments${dbSuffix}`).where('uid', '==', uid).get();
-    for (const doc of commentsSnapShot.docs) {
-      await doc.ref.delete();
-    }
-    console.log(`deleteAccount comments deleted`);
-
-    const answersSnapShot = await admin.firestore().collectionGroup(`Answers${dbSuffix}`).where('uid', '==', uid).get();
-    for (const doc of answersSnapShot.docs) {
-      await doc.ref.delete();
-    }
-    console.log(`deleteAccount questions answers deleted`);
-
-    const likesSnapShot = await admin.firestore().collectionGroup(`Likes${dbSuffix}`).where('uid', '==', uid).get();
-    for (const doc of likesSnapShot.docs) {
-      await doc.ref.delete();
-    }
-    console.log(`deleteAccount questions likes deleted`);
 
     const chatMemberSnapShot = await admin.firestore().collectionGroup(`IbMembers${dbSuffix}`).where('uid', '==', uid).get();
     for (const doc of chatMemberSnapShot.docs) {
