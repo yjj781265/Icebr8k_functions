@@ -67,7 +67,7 @@ export const deleteAccount = functions.https.onCall(async (data) => {
   const uid: string = data.uid;
 
   try {
-    // admin.auth().deleteUser(uid);
+    admin.auth().deleteUser(uid);
     const userRef = admin.firestore().collection(`IbUsers${dbSuffix}`).doc(uid);
     await userRef.delete();
     console.log(`deleteAccount user deleted`);
