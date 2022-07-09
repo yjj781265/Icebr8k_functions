@@ -19,7 +19,7 @@ const kPollLike:string = 'new_like_poll';
 const kPollCommentLike:string = 'new_like_comment';
 const kPollCommentReply:string = 'poll_comment_reply';
 
-admin.initializeApp();
+
 export const answerAddTriggerBeta = functions.firestore
     .document(`IbQuestions${dbSuffix}/{docId}/Answers${dbSuffix}/{uid}`)
     .onCreate(async (snapshot) => {

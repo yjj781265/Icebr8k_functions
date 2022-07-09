@@ -21,7 +21,6 @@ const kPollLike:string = 'new_like_poll';
 const kPollCommentLike:string = 'new_like_comment';
 const kPollCommentReply:string = 'poll_comment_reply';
 
-admin.initializeApp();
 
 export const answerAddTriggerDev = functions.firestore
     .document(`IbQuestions${dbSuffix}/{docId}/Answers${dbSuffix}/{uid}`)
@@ -346,6 +345,41 @@ export const commentAddTriggerDev = functions.firestore
       }
     });
 
+export const commentUpdateTriggerDev = functions.firestore
+    .document(`IbQuestions${dbSuffix}/{docId}/Comments${dbSuffix}/{commentId}`)
+    .onUpdate(async (snapshot) => {
+      console.log('commentUpdateTriggerDev');
+      const questionId: string | undefined | null = snapshot.after.data().questionId;
+      const repliesBefore: [] = snapshot.before.data().replies;
+      const repliesAfter: [] = snapshot.after.data().replies;
+      if (questionId == null || questionId == undefined) {
+        return;
+      }
+
+      const questionRef = admin
+          .firestore()
+          .collection(`IbQuestions${dbSuffix}`)
+          .doc(`${questionId}`);
+
+      if (!(await questionRef.get()).exists) {
+        console.warn('document does not exist, failed to increment');
+        return;
+      } else {
+        console.info('document does exist, increment 1');
+      }
+      // + comment size and notify question creator that new comment is added
+
+      const diff:number = repliesAfter.length - repliesBefore.length;
+
+
+      try {
+        utils.updateCounter(questionRef, 'comments', diff);
+        utils.updateCounter(questionRef, 'points', diff*2);
+      } catch (e) {
+        console.log('Transaction failure:', e);
+      }
+    });
+
 export const commentDeleteTriggerDev = functions.firestore
     .document(`IbQuestions${dbSuffix}/{docId}/Comments${dbSuffix}/{commentId}`)
     .onDelete(async (snapshot) => {
@@ -466,9 +500,9 @@ export const commentLikeAddTriggerDev = functions.firestore
       // + comment like count and notify comment creator
       try {
         utils.updateCounter(commentDoc.ref, 'likes', 1);
-        const notifyUid: string = commentDoc.data()!.notifyUid;
+        const commentUid: string = commentDoc.data()!.uid;
         utils.addNotification('', commentId, kPollCommentLike,
-            admin.firestore.FieldValue.serverTimestamp(), false, senderId, notifyUid, dbSuffix);
+            admin.firestore.FieldValue.serverTimestamp(), false, senderId, commentUid, dbSuffix);
       } catch (e) {
         console.log('Transaction failure:', e);
       }
