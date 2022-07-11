@@ -90,8 +90,12 @@ export const deleteAccount = functions.https.onCall(async (data) => {
       const commentsSnapShot = await doc.ref.collection(`Comments${dbSuffix}`).get();
       for (const doc of commentsSnapShot.docs) {
         await doc.ref.delete();
+        const likesSnapShot = await doc.ref.collection(`Comments-Likes${dbSuffix}`).get();
+        for (const like of likesSnapShot.docs) {
+          await like.ref.delete();
+        }
       }
-      console.log(`deleteAccount comments deleted`);
+      console.log(`deleteAccount question comments deleted`);
 
       const answersSnapShot = await doc.ref.collection(`Answers${dbSuffix}`).get();
       for (const doc of answersSnapShot.docs) {
@@ -107,6 +111,21 @@ export const deleteAccount = functions.https.onCall(async (data) => {
     }
     console.log(`deleteAccount questions deleted`);
 
+    const commentsSnapShot = await admin.firestore().collectionGroup(`Comments${dbSuffix}`).where('uid', '==', uid).get();
+    for (const doc of commentsSnapShot.docs) {
+      await doc.ref.delete();
+      const likesSnapShot = await doc.ref.collection(`Comments-Likes${dbSuffix}`).get();
+      for (const like of likesSnapShot.docs) {
+        await like.ref.delete();
+      }
+    }
+    console.log(`deleteAccount user comments deleted`);
+
+    const answersSnapShot = await admin.firestore().collectionGroup(`Answers${dbSuffix}`).where('uid', '==', uid).get();
+    for (const doc of answersSnapShot.docs) {
+      await doc.ref.delete();
+    }
+    console.log(`deleteAccount user answers deleted`);
 
     const chatMemberSnapShot = await admin.firestore().collectionGroup(`IbMembers${dbSuffix}`).where('uid', '==', uid).get();
     for (const doc of chatMemberSnapShot.docs) {
@@ -115,6 +134,53 @@ export const deleteAccount = functions.https.onCall(async (data) => {
     console.log(`deleteAccount chat member deleted`);
   } catch (e) {
     console.log(`deleteAccount failed ${e} `);
+  }
+});
+
+export const tagPollStatsScheduledFunction = functions.pubsub.schedule('every 720 hours').onRun(async (context) => {
+  try {
+    console.log('tagPollStatsScheduledFunction started');
+    const kUserCollectionDevSnap = await admin.firestore().collection('IbUsers-dev').get();
+    for (const doc of kUserCollectionDevSnap.docs) {
+      const uid = doc.id;
+      const askedCountSnap = await admin.firestore().collection('IbQuestions-dev').where('creatorId', '==', uid).get();
+      const askedCount = askedCountSnap.docs.length;
+      const answeredCountSnap = await admin.firestore().collectionGroup('Answers-dev').where('uid', '==', uid).get();
+      const answeredCount = answeredCountSnap.docs.length;
+      await admin.firestore().collection('IbUsers-dev').doc(uid).update({'askedCount': askedCount, 'answeredCount': answeredCount});
+    }
+
+    const kUserCollectionProdSnap = await admin.firestore().collection('IbUsers-prod').get();
+    for (const doc of kUserCollectionProdSnap.docs) {
+      const uid = doc.id;
+      const askedCountSnap = await admin.firestore().collection('IbQuestions-prod').where('creatorId', '==', uid).get();
+      const askedCount = askedCountSnap.docs.length;
+      const answeredCountSnap = await admin.firestore().collectionGroup('Answers-prod').where('uid', '==', uid).get();
+      const answeredCount = answeredCountSnap.docs.length;
+      await admin.firestore().collection('IbUsers-prod').doc(uid).update({'askedCount': askedCount, 'answeredCount': answeredCount});
+    }
+
+    const kTagCollectionDevSnap = await admin.firestore().collection('IbTags-dev').get();
+    for (const doc of kTagCollectionDevSnap.docs) {
+      const tag = doc.id;
+      const questionCountSnap = await admin.firestore().collection('IbQuestions-dev').where('isPublic', '==', true).where('tags', 'array-contains', tag).get();
+      const questionCount = questionCountSnap.docs.length;
+      await admin.firestore().collection('IbTags-dev').doc(tag).update({'questionCount': questionCount});
+    }
+
+    const kTagCollectionProdSnap = await admin.firestore().collection('IbTags-prod').get();
+    for (const doc of kTagCollectionProdSnap.docs) {
+      const tag = doc.id;
+      const questionCountSnap = await admin.firestore().collection('IbQuestions-prod').where('isPublic', '==', true).where('tags', 'array-contains', tag).get();
+      const questionCount = questionCountSnap.docs.length;
+      await admin.firestore().collection('IbTags-prod').doc(tag).update({'questionCount': questionCount});
+    }
+
+
+    return null;
+  } catch (e) {
+    console.log('tagPollStatsScheduledFunction failed ', e);
+    return null;
   }
 });
 

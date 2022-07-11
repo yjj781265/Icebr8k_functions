@@ -385,6 +385,7 @@ export const commentDeleteTriggerDev = functions.firestore
     .onDelete(async (snapshot) => {
       console.log('commentDeleteTriggerDev');
       const questionId: string | undefined | null = snapshot.data().questionId;
+      const replies : [] = snapshot.data().replies;
       if (questionId == null || questionId == undefined) {
         return;
       }
@@ -403,8 +404,9 @@ export const commentDeleteTriggerDev = functions.firestore
 
       // - comment size
       try {
-        utils.updateCounter(questionRef, 'comments', -1);
-        utils.updateCounter(questionRef, 'points', -2);
+        const decrementNumber = 1+replies.length;
+        utils.updateCounter(questionRef, 'comments', -decrementNumber);
+        utils.updateCounter(questionRef, 'points', -(decrementNumber*2));
       } catch (e) {
         console.log('Transaction failure:', e);
       }
