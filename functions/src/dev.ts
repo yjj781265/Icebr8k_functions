@@ -135,18 +135,15 @@ export const answerDeleteTriggerDev = functions.firestore
 
       if (!(await questionRef.get()).exists) {
         console.warn('document does not exist, failed to increment');
-        return;
       } else {
-        console.info('document does exist, increment -1');
-      }
-
-      // - poll size
-      try {
-        utils.updateCounter(questionRef, 'pollSize', -1);
-        utils.updateCounter(questionRef, 'points', -1);
-        utils.updateCounter(questionRef, choiceId, -1);
-      } catch (e) {
-        console.log('Transaction failure:', e);
+        console.info('document does exist, increment -1'); // - poll size
+        try {
+          utils.updateCounter(questionRef, 'pollSize', -1);
+          utils.updateCounter(questionRef, 'points', -1);
+          utils.updateCounter(questionRef, choiceId, -1);
+        } catch (e) {
+          console.log('Transaction failure:', e);
+        }
       }
 
       const uid: string | undefined | null = snapshot.data().uid;
@@ -162,16 +159,14 @@ export const answerDeleteTriggerDev = functions.firestore
 
       if (!(await userRef.get()).exists) {
         console.warn('document does not exist, failed to increment');
-        return;
       } else {
         console.info('document does exist, increment -1');
-      }
-
-      // - user answered size
-      try {
-        utils.updateCounter(userRef, 'answeredCount', -1);
-      } catch (e) {
-        console.log('Transaction failure:', e);
+        // - user answered size
+        try {
+          utils.updateCounter(userRef, 'answeredCount', -1);
+        } catch (e) {
+          console.log('Transaction failure:', e);
+        }
       }
     });
 
